@@ -1,0 +1,3585 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jadwal Center Meeting — Koperasi Mitra Dhuafa (KOMIDA) Cabang WADO</title>
+  <!-- Font Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js untuk visualisasi Ringkasan Wilayah -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- SheetJS (XLSX) untuk membaca file CenterMeeting .xlsx / .xls / .csv -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #059669;
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      .print-shadow-none {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-emerald-200 selection:text-emerald-950">
+
+  <!-- Input File Tersembunyi untuk Upload CenterMeeting Terbaru (.xlsx, .xls, .csv) -->
+  <input
+    type="file"
+    id="centerMeetingFileInput"
+    accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+    class="hidden"
+    onchange="handleCenterMeetingFileUpload(event)"
+  />
+
+  <!-- Container Notifikasi Toast -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Banner Peringatan Non-Blocking jika ada error -->
+  <div id="runtimeErrorBanner" class="hidden bg-amber-50 border-b border-amber-200 text-amber-900 text-xs px-4 py-2.5 no-print">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 shrink-0"></i>
+        <span id="runtimeErrorText">Terjadi kendala ringan; data jadwal tetap ditampilkan.</span>
+      </div>
+      <button type="button" onclick="dismissErrorBanner()" class="text-amber-700 hover:text-amber-950 font-semibold cursor-pointer">
+        Tutup
+      </button>
+    </div>
+  </div>
+
+  <!-- HEADER RESMI KOMIDA CABANG WADO -->
+  <header class="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-800 text-white shadow-lg border-b border-emerald-700/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="flex items-start sm:items-center gap-3.5">
+          <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
+            <svg class="w-7 h-7 sm:w-8 sm:h-8 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4M5 21V10.85M19 21V10.85M9 21v-4a2 2 0 012-2h2a2 2 0 012 2v4" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
+                KOPERASI MITRA DHUAFA (KOMIDA) &bull; CABANG WADO
+              </span>
+              <span id="datasetSourceBadge" class="inline-flex items-center gap-1 text-xs text-emerald-200/95 font-mono">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                WADO, 11/23/2026 7:52:33 AM &bull; MDis System CenterMeetingScheduleRpt
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-white">
+                Jadwal Center Meeting
+              </h1>
+              <!-- Indikator Status Sinkronisasi Cloud Real-Time -->
+              <span id="cloudSyncStatusPill" onclick="openCloudSyncModal()" title="Klik untuk kelola sinkronisasi cloud & ruang kerja" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white/10 text-emerald-100 border border-white/20 cursor-pointer hover:bg-white/20 transition-all no-print">
+                <span id="cloudSyncDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                <span id="cloudSyncStatusText">Menghubungkan Cloud...</span>
+              </span>
+            </div>
+            <p class="text-xs sm:text-sm text-emerald-100/90 mt-0.5">
+              Sistem Informasi Jadwal &amp; Kondisi Center Meeting — Koperasi Mitra Dhuafa (KOMIDA) Cabang WADO
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 no-print">
+          <!-- Tombol Akun / Sync Cloud Lintas Perangkat -->
+          <button type="button" onclick="openCloudSyncModal()" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-teal-950/55 hover:bg-teal-950/80 text-emerald-100 border border-emerald-400/35 font-semibold text-xs sm:text-sm shadow-sm backdrop-blur-sm transition-all cursor-pointer">
+            <i data-lucide="cloud" class="w-4 h-4 text-emerald-300"></i>
+            <span id="cloudWorkspaceHeaderLabel">Sync: Cabang WADO</span>
+          </button>
+
+          <!-- Tombol Utama Upload File CenterMeeting Terbaru -->
+          <button type="button" onclick="triggerCenterMeetingUpload()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+            <span>Upload CenterMeeting (.xlsx/.csv)</span>
+          </button>
+
+          <button type="button" onclick="exportToCSV()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-emerald-950 font-semibold text-xs sm:text-sm shadow-sm transition-all cursor-pointer">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>Unduh CSV (<span id="exportCountBadge">356</span>)</span>
+          </button>
+
+          <button type="button" onclick="openResetOptionsModal()" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-rose-500/25 text-emerald-100 hover:text-white border border-white/20 font-medium text-xs sm:text-sm backdrop-blur-sm transition-all cursor-pointer" title="Reset kondisi, catatan, atau dataset bawaan">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            <span>Reset (<span id="savedStateCountBadge">0</span>)</span>
+          </button>
+
+          <button type="button" onclick="window.print()" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium text-xs sm:text-sm backdrop-blur-sm transition-all cursor-pointer">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Cetak</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- KONTEN UTAMA -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- KARTU KPI DINAMIS (Center, Group, Member, Client, Officer + Kondisi) -->
+    <section aria-label="Ringkasan Statistik Utama" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm print-shadow-none flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Center</span>
+          <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="map-pin" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div id="kpiCenters" class="text-2xl sm:text-3xl font-extrabold text-slate-900">356</div>
+          <p id="kpiCentersSub" class="text-[11px] text-slate-500 mt-0.5">100% dari 356 jadwal</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm print-shadow-none flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Group</span>
+          <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+            <i data-lucide="layers" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div id="kpiGroups" class="text-2xl sm:text-3xl font-extrabold text-slate-900">802</div>
+          <p id="kpiGroupsSub" class="text-[11px] text-slate-500 mt-0.5">Rata-rata 2.25 grp/ctr</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm print-shadow-none flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Member</span>
+          <div class="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
+            <i data-lucide="users" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div id="kpiMembers" class="text-2xl sm:text-3xl font-extrabold text-slate-900">3.034</div>
+          <p id="kpiMembersSub" class="text-[11px] text-slate-500 mt-0.5">Total anggota</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm print-shadow-none flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Client</span>
+          <div class="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center">
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div id="kpiClients" class="text-2xl sm:text-3xl font-extrabold text-emerald-700">2.997</div>
+          <p id="kpiClientsSub" class="text-[11px] text-slate-500 mt-0.5">98.8% rasio aktif</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm print-shadow-none flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Officer</span>
+          <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <i data-lucide="briefcase" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div id="kpiOfficers" class="text-2xl sm:text-3xl font-extrabold text-slate-900">12</div>
+          <p class="text-[11px] text-slate-500 mt-0.5">Petugas lapangan</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm print-shadow-none flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Kondisi</span>
+          <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+            <i data-lucide="traffic-cone" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div id="kpiConditionSummary" class="text-sm sm:text-base font-extrabold text-slate-800">0 Hijau &bull; 0 Merah</div>
+          <p id="kpiConditionUnset" class="text-[11px] text-slate-500 mt-0.5">356 belum diatur</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 TAB NAVIGASI UTAMA -->
+    <div class="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-sm flex flex-wrap gap-1.5 no-print" role="tablist">
+      <button type="button" id="tabBtn-mingguan" onclick="switchMainTab('mingguan')" class="flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-emerald-700 text-white shadow-sm cursor-pointer">
+        <i data-lucide="calendar-days" class="w-4 h-4"></i>
+        <span>Jadwal Mingguan</span>
+      </button>
+      <button type="button" id="tabBtn-officer" onclick="switchMainTab('officer')" class="flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:bg-slate-100 cursor-pointer">
+        <i data-lucide="user-cog" class="w-4 h-4"></i>
+        <span>Rekap Officer</span>
+      </button>
+      <button type="button" id="tabBtn-wilayah" onclick="switchMainTab('wilayah')" class="flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:bg-slate-100 cursor-pointer">
+        <i data-lucide="map" class="w-4 h-4"></i>
+        <span>Ringkasan Wilayah</span>
+      </button>
+    </div>
+
+    <!-- =====================================================================
+         TAB 1: JADWAL MINGGUAN
+         ===================================================================== -->
+    <section id="view-mingguan" class="space-y-4">
+      <!-- Bar Filter & Kontrol Tampilan -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4 no-print">
+        <!-- Baris Atas: Filter Hari & Mode Tampilan / Kolom -->
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div id="dayFilterPills" class="flex items-center gap-1.5 overflow-x-auto pb-1 xl:pb-0"></div>
+
+          <!-- Toggle Mode Tampilan & Mode Kolom -->
+          <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/70">
+              <button type="button" id="viewMode-flat" onclick="setScheduleViewMode('flat')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-emerald-700 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="list" class="w-3.5 h-3.5"></i>
+                <span>Tabel Datar</span>
+              </button>
+              <button type="button" id="viewMode-grouped" onclick="setScheduleViewMode('grouped')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="folder-tree" class="w-3.5 h-3.5"></i>
+                <span>Kelompok per Officer</span>
+              </button>
+            </div>
+
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/70">
+              <button type="button" id="colMode-full" onclick="setColumnMode('full')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-sm transition-all cursor-pointer">
+                Kolom Lengkap
+              </button>
+              <button type="button" id="colMode-compact" onclick="setColumnMode('compact')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+                Kolom Ringkas
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Baris Bawah: Filter Officer, Kecamatan, Kondisi Center, Pencarian Bebas & Reset -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+          <div class="lg:col-span-3">
+            <select id="officerFilter" onchange="applyFilters()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all cursor-pointer">
+              <option value="ALL">Semua Officer</option>
+            </select>
+          </div>
+
+          <div class="lg:col-span-2">
+            <select id="kecamatanFilter" onchange="applyFilters()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all cursor-pointer">
+              <option value="ALL">Semua Kecamatan</option>
+            </select>
+          </div>
+
+          <div class="lg:col-span-2">
+            <select id="conditionFilter" onchange="applyFilters()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all cursor-pointer">
+              <option value="ALL">Kondisi: Semua</option>
+              <option value="HIJAU">Kondisi: Hijau</option>
+              <option value="MERAH">Kondisi: Merah</option>
+              <option value="UNSET">Kondisi: Belum Diatur</option>
+            </select>
+          </div>
+
+          <div class="lg:col-span-4 relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            <input
+              type="text"
+              id="searchInput"
+              oninput="applyFilters()"
+              placeholder="Cari bebas: ID/Nama Center, Desa, Officer, Jam, Catatan..."
+              class="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+            />
+            <button type="button" id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer" title="Hapus pencarian">
+              <i data-lucide="x-circle" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div class="lg:col-span-1 flex">
+            <button type="button" onclick="resetAllFilters()" title="Reset semua filter" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              <span class="lg:hidden">Reset</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Status Bar & Pengurutan -->
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 pt-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <div id="filterStatusText">
+              Menampilkan <strong class="text-slate-800">356</strong> dari <strong class="text-slate-800">356</strong> jadwal center meeting.
+            </div>
+            <span id="persistenceStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-medium">
+              <i data-lucide="refresh-cw" class="w-3 h-3 text-emerald-600"></i>
+              <span>Sinkronisasi cloud aktif &amp; kondisi terjaga saat upload</span>
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="sortSelect" class="text-slate-500">Urutkan:</label>
+            <select id="sortSelect" onchange="applyFilters()" class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <option value="default">Urutan Laporan Asli</option>
+              <option value="time_asc">Jam Pertemuan (08:30 &rarr; 16:00)</option>
+              <option value="id_asc">Center ID (001 &rarr; 404)</option>
+              <option value="member_desc">Member Terbanyak</option>
+              <option value="desa_asc">Desa (A &rarr; Z)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wadah Jadwal (Tabel Datar / Kelompok per Officer) -->
+      <div id="scheduleContentContainer"></div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 2: REKAP OFFICER
+         ===================================================================== -->
+    <section id="view-officer" class="hidden space-y-5">
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Rekapitulasi Beban Kerja Officer</h2>
+            <p class="text-xs sm:text-sm text-slate-500">Ringkasan center harian, group, member, client, serta status kondisi center per petugas.</p>
+          </div>
+          <span id="officerCountBadge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
+            <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i>
+            <span>12 Petugas Lapangan</span>
+          </span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-800 text-white text-xs uppercase tracking-wider">
+                <th class="py-3 px-3 font-semibold">No</th>
+                <th class="py-3 px-3 font-semibold">Nama Officer</th>
+                <th class="py-3 px-2 text-center font-semibold">Sen</th>
+                <th class="py-3 px-2 text-center font-semibold">Sel</th>
+                <th class="py-3 px-2 text-center font-semibold">Rab</th>
+                <th class="py-3 px-2 text-center font-semibold">Kam</th>
+                <th class="py-3 px-2 text-center font-semibold">Jum</th>
+                <th class="py-3 px-2.5 text-right font-semibold">Center</th>
+                <th class="py-3 px-2.5 text-right font-semibold">Group</th>
+                <th class="py-3 px-2.5 text-right font-semibold">Member</th>
+                <th class="py-3 px-2.5 text-right font-semibold">Client</th>
+                <th class="py-3 px-2.5 text-center font-semibold">Hijau/Merah</th>
+                <th class="py-3 px-3 text-center font-semibold no-print">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="officerSummaryTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+            <tfoot id="officerSummaryTableFoot" class="bg-emerald-50/90 font-bold text-slate-900 border-t-2 border-emerald-600"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div id="officerCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 3: RINGKASAN WILAYAH
+         ===================================================================== -->
+    <section id="view-wilayah" class="hidden space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Sebaran Center per Kecamatan</h3>
+              <p class="text-xs text-slate-500">Distribusi center pada wilayah kerja aktif</p>
+            </div>
+            <span id="wilayahKecCountBadge" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold">8 Kecamatan</span>
+          </div>
+          <div class="relative h-72 w-full">
+            <canvas id="chartWilayahKecamatan"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Distribusi Harian (Center &amp; Client)</h3>
+              <p class="text-xs text-slate-500">Perbandingan volume jadwal Senin s/d Jumat</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 text-xs font-semibold">Senin - Jumat</span>
+          </div>
+          <div class="relative h-72 w-full">
+            <canvas id="chartWilayahHarian"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Rekapitulasi Desa / Kelurahan &amp; Kecamatan</h3>
+            <p class="text-xs text-slate-500">Klik nama kecamatan untuk memfilter jadwal mingguan sesuai wilayah</p>
+          </div>
+          <div id="kabupatenSummaryText" class="text-xs text-slate-600">
+            Kab. Sumedang: <strong class="text-slate-900">331 Center</strong> &bull; Kab. Majalengka: <strong class="text-slate-900">25 Center</strong>
+          </div>
+        </div>
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-800 text-white text-xs uppercase tracking-wider">
+                <th class="py-3 px-3.5 font-semibold">Kecamatan</th>
+                <th class="py-3 px-3.5 font-semibold">Kabupaten</th>
+                <th class="py-3 px-3 text-center font-semibold">Jumlah Desa</th>
+                <th class="py-3 px-3 text-right font-semibold">Center</th>
+                <th class="py-3 px-3 text-right font-semibold">Group</th>
+                <th class="py-3 px-3 text-right font-semibold">Member</th>
+                <th class="py-3 px-3.5 text-right font-semibold">Client</th>
+              </tr>
+            </thead>
+            <tbody id="wilayahTableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer id="mainFooter" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 mt-8 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+    <div id="footerLeftText">
+      <strong class="text-slate-700">Koperasi Mitra Dhuafa (KOMIDA) — Cabang WADO</strong> &bull; WADO, 11/23/2026 7:52:33 AM &bull; MDis System CenterMeetingScheduleRpt
+    </div>
+    <div id="footerRightText">
+      Total Valid: <span class="font-semibold text-emerald-700">356 Center</span> | <span class="font-semibold text-emerald-700">802 Group</span> | <span class="font-semibold text-emerald-700">3.034 Member</span> | <span class="font-semibold text-emerald-700">2.997 Client</span>
+    </div>
+  </footer>
+
+  <!-- MODAL DETAIL CENTER MEETING -->
+  <div id="detailModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" onclick="closeModalOnBackdrop(event, 'detailModal')">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
+      <div class="bg-gradient-to-r from-emerald-800 to-teal-700 px-5 py-4 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span id="modalCenterIdBadge" class="px-3 py-1 rounded-xl bg-white/15 border border-white/25 font-mono text-sm font-bold">#044</span>
+          <div>
+            <h3 id="modalCenterName" class="text-lg font-bold leading-tight">Nama Center</h3>
+            <p id="modalDayTime" class="text-xs text-emerald-100 mt-0.5">SENIN &bull; Pukul 09:00 WIB</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeDetailModal()" class="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4">
+        <!-- Sel Center di Modal yang ikut berubah warna background sesuai Kondisi Center -->
+        <div id="modalCenterHighlightBox" class="p-3.5 rounded-xl border transition-colors bg-slate-50 border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Kolom Center &amp; Kondisi Center</span>
+            <div id="modalCenterSummaryText" class="text-sm font-bold text-slate-900 mt-0.5">#044 — Rose</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="modalConditionSelect" class="text-xs font-semibold text-slate-700">Kondisi:</label>
+            <select id="modalConditionSelect" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer">
+              <option value="">&mdash; (Belum Diatur)</option>
+              <option value="HIJAU">Hijau</option>
+              <option value="MERAH">Merah</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Officer</span>
+            <div id="modalOfficerName" class="mt-1 font-bold text-slate-800 text-sm">-</div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Lokasi Wilayah</span>
+            <div id="modalLocation" class="mt-1 text-sm font-semibold text-slate-800">-</div>
+            <div id="modalKabupaten" class="text-xs text-slate-500">-</div>
+          </div>
+        </div>
+
+        <!-- Keterangan Manual -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5">
+          <label for="modalNoteInput" class="text-[11px] font-bold uppercase tracking-wider text-slate-600 block">
+            Keterangan Manual
+          </label>
+          <input
+            type="text"
+            id="modalNoteInput"
+            placeholder="Isi catatan atau keterangan center meeting..."
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+          />
+        </div>
+
+        <!-- Statistik Angka -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="p-3 rounded-xl bg-teal-50/70 border border-teal-200/70 text-center">
+            <div class="text-xs font-medium text-teal-700">Group</div>
+            <div id="modalGroups" class="text-xl font-extrabold text-teal-900 mt-0.5">0</div>
+          </div>
+          <div class="p-3 rounded-xl bg-cyan-50/70 border border-cyan-200/70 text-center">
+            <div class="text-xs font-medium text-cyan-700">Member</div>
+            <div id="modalMembers" class="text-xl font-extrabold text-cyan-900 mt-0.5">0</div>
+          </div>
+          <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/70 text-center">
+            <div class="text-xs font-medium text-emerald-700">Client</div>
+            <div id="modalClients" class="text-xl font-extrabold text-emerald-900 mt-0.5">0</div>
+          </div>
+        </div>
+
+        <!-- Rute Officer di Hari yang Sama -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 id="modalSiblingTitle" class="text-xs font-bold uppercase tracking-wider text-slate-500">Rute Officer di Hari yang Sama</h4>
+            <span id="modalSiblingCount" class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">0 Center</span>
+          </div>
+          <div id="modalSiblingList" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto text-xs"></div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <button type="button" id="modalFilterOfficerBtn" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors cursor-pointer">
+          <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+          <span>Filter Officer Ini</span>
+        </button>
+        <button type="button" onclick="closeDetailModal()" class="px-4 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL OPSI RESET (Kondisi/Catatan Saja atau Kembali ke Dataset Bawaan 356) -->
+  <div id="resetModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" onclick="closeModalOnBackdrop(event, 'resetModal')">
+    <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200">
+      <div class="bg-slate-900 px-5 py-4 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="rotate-ccw" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="text-base font-bold">Opsi Reset Data</h3>
+        </div>
+        <button type="button" onclick="closeResetOptionsModal()" class="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-3 text-xs sm:text-sm">
+        <p class="text-slate-600">Pilih tindakan reset yang Anda inginkan (perubahan akan langsung tersinkronisasi ke ruang kerja aktif):</p>
+
+        <button type="button" onclick="clearAnnotationsOnly()" class="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer">
+          <div class="font-bold text-slate-900">Hapus Kondisi Center &amp; Keterangan</div>
+          <div class="text-xs text-slate-500 mt-0.5">Mengosongkan seluruh pilihan Hijau/Merah dan catatan manual tanpa mengubah jadwal aktif.</div>
+        </button>
+
+        <button type="button" onclick="restoreDefaultScheduleDataset()" class="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all cursor-pointer">
+          <div class="font-bold text-slate-900">Kembali ke Dataset Bawaan (356 Center)</div>
+          <div class="text-xs text-slate-500 mt-0.5">Memulihkan jadwal awal 356 baris dan mencocokkan ulang kondisi serta catatan yang tersimpan.</div>
+        </button>
+      </div>
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <button type="button" onclick="closeResetOptionsModal()" class="px-4 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 cursor-pointer">
+          Batal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL AKUN & SINKRONISASI CLOUD LINTAS PERANGKAT -->
+  <div id="cloudSyncModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" onclick="closeModalOnBackdrop(event, 'cloudSyncModal')">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
+      <div class="bg-gradient-to-r from-emerald-900 to-teal-800 px-5 py-4 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center">
+            <i data-lucide="cloud" class="w-5 h-5 text-emerald-300"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold leading-tight">Sinkronisasi Cloud Lintas Perangkat</h3>
+            <p class="text-[11px] text-emerald-100/90">Real-time antara HP, Tablet &amp; Laptop Cabang WADO</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeCloudSyncModal()" class="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
+        <!-- Status Koneksi & Identitas Sesi -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Status Koneksi Real-Time</span>
+            <span id="modalCloudConnBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+              Terhubung Cloud
+            </span>
+          </div>
+          <div class="text-xs text-slate-600 space-y-1">
+            <div>Mode Aktif: <strong id="modalActiveWorkspaceName" class="text-slate-900">Ruang Kerja Bersama Cabang WADO (komida_wado_shared)</strong></div>
+            <div class="flex items-center justify-between gap-2 pt-1">
+              <span class="text-[11px] text-slate-500 truncate">ID Perangkat / Akun: <code id="modalCurrentUserId" class="font-mono text-slate-800 bg-white px-1.5 py-0.5 rounded border border-slate-200">-</code></span>
+              <button type="button" onclick="copyCurrentWorkspaceLinkOrId()" class="shrink-0 px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 cursor-pointer">
+                Salin Kode Ruang
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pilihan Mode Ruang Kerja (Cabang Bersama vs Kode Tim Kustom vs Pribadi Akun) -->
+        <div class="space-y-2">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">1. Pilih Ruang Kerja Sinkronisasi</label>
+          <div class="grid grid-cols-1 gap-2">
+            <button type="button" id="wsOptionSharedBtn" onclick="selectWorkspaceMode('shared')" class="w-full text-left p-3 rounded-xl border-2 border-emerald-600 bg-emerald-50/60 transition-all cursor-pointer">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-900">Ruang Kerja Bersama Cabang WADO (Default)</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white">Direkomendasikan</span>
+              </div>
+              <p class="text-[11px] text-slate-600 mt-0.5">Semua perangkat cabang yang membuka aplikasi otomatis melihat jadwal unggahan terbaru, kondisi Hijau/Merah, dan catatan yang sama.</p>
+            </button>
+
+            <div class="p-3 rounded-xl border border-slate-200 bg-white space-y-2">
+              <div class="font-bold text-slate-900">Ruang Kerja Tim / Kode Kustom</div>
+              <p class="text-[11px] text-slate-500">Masukkan kode ruang yang sama pada beberapa perangkat jika ingin membuat ruang terpisah (misal: <code class="font-mono">tim_wado_1</code>).</p>
+              <div class="flex items-center gap-2">
+                <input type="text" id="customWorkspaceCodeInput" placeholder="Contoh: komida_wado_tim_a" class="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
+                <button type="button" onclick="applyCustomWorkspaceCode()" class="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer">
+                  Gunakan Kode
+                </button>
+              </div>
+            </div>
+
+            <button type="button" id="wsOptionPersonalBtn" onclick="selectWorkspaceMode('personal')" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition-all cursor-pointer">
+              <div class="font-bold text-slate-900">Ruang Kerja Pribadi (Per Akun)</div>
+              <p class="text-[11px] text-slate-500 mt-0.5">Menyimpan jadwal, kondisi, dan catatan secara privat khusus untuk akun Anda di lintas perangkat yang login dengan akun yang sama.</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- Login Akun Google / Email untuk Sinkronisasi Akun Pribadi atau Identitas Petugas -->
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">2. Akun Petugas (Google / Email)</span>
+            <span id="modalAuthTypeBadge" class="text-[11px] font-semibold text-slate-500">Sesi Perangkat Otomatis</span>
+          </div>
+
+          <div id="authSignedInBox" class="hidden p-2.5 rounded-lg bg-white border border-emerald-200 flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div id="authUserDisplayName" class="font-bold text-slate-900 text-xs truncate">Petugas KOMIDA</div>
+              <div id="authUserEmail" class="text-[11px] text-slate-500 truncate">-</div>
+            </div>
+            <button type="button" onclick="signOutToGuestSession()" class="shrink-0 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold cursor-pointer">
+              Keluar Akun
+            </button>
+          </div>
+
+          <div id="authLoginFormsBox" class="space-y-2.5">
+            <button type="button" onclick="signInWithGoogleAccount()" class="w-full py-2.5 px-3.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-semibold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer">
+              <svg class="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/>
+                <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/>
+                <path fill="#FBBC05" d="M5.3 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.6 7.4C.6 9.4 0 11.6 0 14s.6 4.6 1.6 6.6l3.7-2.8z"/>
+                <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 20.4 7.4 23 12 23z"/>
+              </svg>
+              <span>Masuk dengan Akun Google</span>
+            </button>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input type="email" id="authEmailInput" placeholder="Email petugas..." class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
+              <input type="password" id="authPasswordInput" placeholder="Kata sandi (min. 6 karakter)" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="signInWithEmailAccount(false)" class="flex-1 py-2 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer">
+                Masuk Email
+              </button>
+              <button type="button" onclick="signInWithEmailAccount(true)" class="flex-1 py-2 px-3 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold cursor-pointer">
+                Daftar Akun Baru
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <button type="button" onclick="forcePushLocalToCloud()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold cursor-pointer">
+          <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+          <span>Sinkronkan Ulang Sekarang</span>
+        </button>
+        <button type="button" onclick="closeCloudSyncModal()" class="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold cursor-pointer">
+          Selesai
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCRIPT UTAMA APLIKASI (DENGAN FIREBASE FIRESTORE & AUTH REAL-TIME SYNC)
+       ========================================================================= -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getAuth,
+      signInAnonymously,
+      signInWithCustomToken,
+      onAuthStateChanged,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      onSnapshot,
+      collection,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. DATASET BAWAAN 356 CENTER MEETING KOMIDA CABANG WADO
+    // =========================================================================
+    const DEFAULT_SCHEDULE_ROWS = [
+      ["SENIN","AHMAD ARIYANTO","044","Rose","09:00",1,2,2,"Jayamekar","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","371","CIBALOK BAROKAH","09:00",2,6,6,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","025","Buah Warna","09:30",2,4,4,"Cipasang","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","122","Pasir Cempa","09:30",2,4,4,"Ranggon","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","023","Bonty","10:00",4,15,15,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","256","JALING CIKIRAY3 256","10:00",3,5,5,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","042","Cempaka","10:30",1,1,1,"Tamansari","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","234","NUR RIZKY 234","10:30",2,6,6,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","123","Cikole","11:00",2,6,6,"Ranggon","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","146","Cibiru","11:00",2,4,4,"Cibugel","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","074","Mawar Hitam","11:30",2,4,4,"Cipasang","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","125","Berkah Jaya","11:30",4,14,14,"Neglasari","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","159","Manca","12:00",1,1,1,"Cibugel","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","161","Jaling Cikiray","12:00",3,14,14,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","191","PECAHAN CENTER 107","12:30",3,14,14,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","305","Cisetra reborn","12:30",2,10,10,"Sukaraja","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","313","CIKOLE BERKAH","13:00",2,4,4,"Taruna Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","231","MEMBER 231","13:30",2,11,11,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","AHMAD ARIYANTO","363","BABAKAN DESA","13:30",1,1,1,"Cibugel","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","Amelia Nurjanah","377","PUDUNAN CIPAOK","09:30",2,8,8,"Taruna Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Amelia Nurjanah","378","HARUM MANIS","10:00",2,6,6,"Taruna Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Amelia Nurjanah","402","LANCAR JAYA","10:30",2,8,8,"Karang Pakuan","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Amelia Nurjanah","383","KARPAK","11:00",2,7,7,"Karang Pakuan","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Amelia Nurjanah","381","BAHAGIA","11:30",2,7,7,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["SENIN","Amelia Nurjanah","387","BABAKAN SITU MEKAR","12:00",1,1,1,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["SENIN","Asep Riana","144","Tulip","09:00",2,8,8,"Cipeuteuy","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Asep Riana","252","CERIAH 252","09:00",2,7,7,"Sukapura","WADO","Sumedang, Kab."],
+      ["SENIN","Asep Riana","386","KEMONING","09:30",2,11,11,"Darma Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Asep Riana","154","Cibarengkok","10:00",2,8,8,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Asep Riana","379","Sejahtera","10:30",2,11,11,"Ranggon","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Asep Riana","018","Kebon Buah","11:00",3,15,15,"Darma Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Asep Riana","382","KARANG ANYAR","12:00",2,11,10,"Karang Anyar","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Asep Riana","348","ISTIQOMAH","12:30",4,21,21,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Asep Yophan Hinayah","185","Pelangi","09:15",3,10,10,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Asep Yophan Hinayah","344","MITRA BERKAH","09:35",2,10,10,"Sukamanah","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Asep Yophan Hinayah","396","SUKA","10:15",2,8,8,"Sukamanah","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Asep Yophan Hinayah","094","Sejati","11:00",2,10,10,"Cipeundeuy","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Asep Yophan Hinayah","233","BAROKAH 2 233","11:45",4,7,7,"Kirisik","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","BARKAH RAMADHONI","374","KEBON KAWUNG","09:00",2,15,15,"Cipasang","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","BARKAH RAMADHONI","150","Pasir Kepuh Berkah","09:30",1,3,3,"Cipasang","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","BARKAH RAMADHONI","333","BAROKAH","10:00",3,8,8,"Cipasang","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","BARKAH RAMADHONI","109","Perpecahan Center 074","10:30",2,10,9,"Cipasang","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","BARKAH RAMADHONI","347","AMANAH","12:00",2,7,7,"Cipasang","CIBUGEL","Sumedang, Kab."],
+      ["SENIN","Garry Ginanjar Baehaqi","259","MERGER TLG 403","09:30",3,13,13,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["SENIN","Garry Ginanjar Baehaqi","282","MERGER TLG 417","10:30",1,5,5,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["SENIN","Garry Ginanjar Baehaqi","198","SETIA KASIH","11:00",2,9,8,"Cipeundeuy","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Garry Ginanjar Baehaqi","260","MERGER TLG 408","11:00",2,4,4,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["SENIN","Garry Ginanjar Baehaqi","284","MERGER TLG 416","11:30",3,11,11,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["SENIN","Ismi Safitri","293","Cikiray Indah 293","10:00",2,13,13,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Ismi Safitri","321","DAHLIA","11:00",2,6,6,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["SENIN","Ismi Safitri","395","DARMAJAYA","11:30",2,12,12,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SENIN","Ismi Safitri","370","MELATI","12:00",2,10,8,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["SENIN","Ismi Safitri","336","BUGENVIL","13:00",2,10,10,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","057","Putri Family","09:00",3,7,7,"Cigintung","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","080","Mulya Jaya","09:30",2,8,8,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","166","Rempong","09:30",2,6,6,"Cigintung","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","082","Mitra Barokah","10:00",3,15,15,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","130","Robusa","10:30",1,1,1,"Ranjeng","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","343","BRINGKA","10:30",1,4,4,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","068","Bunga Dahlia","11:30",3,10,9,"Cigintung","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","183","Lingga","11:30",2,7,7,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","135","Mawar Bodas II","12:00",2,5,5,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","055","Arjabumi","12:30",2,4,4,"Ranjeng","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","158","Pasir Muncang","12:30",1,5,5,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","219","BAKAN BANDUNG","13:00",2,8,8,"Ranjeng","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","245","RAHAYU 245","13:00",2,3,3,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","056","Kejora","13:30",4,9,9,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhamad Herman Syah","129","Mergeran Center Cimalaka","13:30",3,4,4,"Ranjeng","CISITU","Sumedang, Kab."],
+      ["SENIN","Muhammad Elfan Apriyanto","147","Penyiriban","09:00",2,7,7,"Mekar Asih","JATIGEDE","Sumedang, Kab."],
+      ["SENIN","Muhammad Elfan Apriyanto","177","Cibunut","10:00",2,9,9,"Mekar Asih","JATIGEDE","Sumedang, Kab."],
+      ["SENIN","Muhammad Elfan Apriyanto","398","CIPICUNG","10:30",2,9,9,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Muhammad Elfan Apriyanto","391","SEJAHTERA","11:30",2,9,9,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","010","Nurrohmah","09:00",4,8,8,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","303","GANG POSYANDU","09:30",2,2,2,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","011","Istiqomah","10:00",3,9,9,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","024","Al-Ikhsan","11:00",2,5,5,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","029","Al-Hidayah","11:30",2,3,3,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","027","Lahau","12:00",2,5,5,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","328","MARWAH","12:30",2,4,4,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","032","Melati","13:00",2,3,3,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","050","Dahlia  II","13:30",2,3,3,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Ratih Sania","199","MELATI","14:00",1,1,1,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Sari Wahyuni","346","Kampung Baru Berkah","09:00",2,12,12,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Sari Wahyuni","244","LESTARY 244","10:00",4,14,13,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Sari Wahyuni","399","TARIKOLOT INDAH","11:00",2,7,7,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["SENIN","Sari Wahyuni","296","BLACK PINK 296","12:00",2,8,8,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","012","Al-Barokah 2","09:00",2,5,5,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","034","Berkah","09:00",2,4,4,"Cieunteung","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","028","Wijaya","09:30",1,3,3,"Taruna Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","035","Ar-Rohman","09:30",3,10,10,"Cieunteung","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","119","Simpay","09:30",2,5,5,"Cieunteung","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","253","JALING CIKIRAY2 253","09:30",2,3,3,"Neglasari","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","190","MAKMUR","10:00",2,7,7,"Taruna Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","335","Pintu air","10:00",2,3,3,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","071","Ciheulang","10:30",1,1,1,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","178","Blok Lamping","10:30",2,6,6,"Taruna Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","137","At Taufik","11:00",2,8,8,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","013","Saluyu","11:30",1,3,3,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","113","Ulil - Albab","11:30",3,9,9,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","015","POS 1","12:00",1,3,3,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","254","at taufik 2 254","13:00",2,9,9,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","369","KAUM KIDUL","14:00",1,1,1,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","AHMAD ARIYANTO","020","Asih","14:30",2,6,6,"Darma Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","Amelia Nurjanah","017","Al-Hikmah","09:00",2,5,5,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["SELASA","Amelia Nurjanah","364","MEKARSARI","10:00",2,10,10,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["SELASA","Amelia Nurjanah","039","Manunggal","10:30",4,18,17,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["SELASA","Amelia Nurjanah","187","AL BAROKAH I","11:30",4,24,23,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["SELASA","Amelia Nurjanah","005","Kaum","12:00",4,22,22,"Wado","WADO","Sumedang, Kab."],
+      ["SELASA","Asep Riana","133","Merah Delima","09:30",3,13,13,"Sunda Mekar","CISITU","Sumedang, Kab."],
+      ["SELASA","Asep Riana","359","KELOMPOK BERKAH","10:00",2,15,15,"Sunda Mekar","CISITU","Sumedang, Kab."],
+      ["SELASA","Asep Riana","312","BUKIT KAMBING","11:00",2,2,2,"Sunda Mekar","CISITU","Sumedang, Kab."],
+      ["SELASA","Asep Riana","290","pindahan cnter 076","11:30",3,12,12,"Sunda Mekar","CISITU","Sumedang, Kab."],
+      ["SELASA","Asep Riana","077","Campaka Kaler","12:00",3,13,13,"Sunda Mekar","CISITU","Sumedang, Kab."],
+      ["SELASA","Asep Riana","375","BRINGKA","12:30",2,13,12,"Cijati","SITURAJA","Sumedang, Kab."],
+      ["SELASA","Asep Yophan Hinayah","320","Wado Berkah","10:00",1,2,2,"Wado","WADO","Sumedang, Kab."],
+      ["SELASA","Asep Yophan Hinayah","179","Kanaga","12:30",2,5,5,"Taruna Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","BARKAH RAMADHONI","316","MAWAR F","09:00",2,9,9,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["SELASA","BARKAH RAMADHONI","299","Pecahan 169","10:00",3,11,11,"Cimarga","CISITU","Sumedang, Kab."],
+      ["SELASA","BARKAH RAMADHONI","169","Cemerlang","10:30",2,4,4,"Cimarga","CISITU","Sumedang, Kab."],
+      ["SELASA","BARKAH RAMADHONI","349","CIKASO BERSATU","11:00",2,7,7,"Cimarga","CISITU","Sumedang, Kab."],
+      ["SELASA","BARKAH RAMADHONI","097","Kemangi","12:00",3,9,9,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["SELASA","BARKAH RAMADHONI","397","PELANGI","12:00",2,9,9,"Ranjeng","CISITU","Sumedang, Kab."],
+      ["SELASA","BARKAH RAMADHONI","326","MELATI","13:00",2,6,6,"Cigintung","CISITU","Sumedang, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","265","MERGER TLG 460","09:00",3,17,17,"Sukamaju","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","297","EDELUWIS","09:30",1,1,1,"Marga Jaya","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","264","MERGER TLG 468","10:00",3,12,12,"Sukajadi","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","269","MERGER TLG 429","10:30",2,3,3,"Marga Jaya","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","273","MERGER TLG 443","10:30",2,4,4,"Borogojol","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","258","MERGER TLG 543","11:00",3,9,9,"Marga Jaya","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","279","MERGER TLG 400","11:00",2,3,3,"Borogojol","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","302","sukajadi Merger 264","11:00",2,4,4,"Sukajadi","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","270","MERGER TLG 432","11:30",4,11,11,"Marga Jaya","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","275","MERGER TLG 401","12:30",2,3,3,"Cipasung","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","261","MERGER TLG 405","13:00",1,2,2,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","280","MERGER TLG 480","13:30",1,2,2,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","267","MERGER TLG 397","14:00",2,7,7,"Dayeuhwangi","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","283","MERGER TLG 395","14:30",2,11,11,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","286","MERGER TLG 617","15:00",2,9,9,"Sukajadi","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Garry Ginanjar Baehaqi","285","MERGER TLG 462","15:30",2,5,5,"Sadawangi","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Ismi Safitri","368","BERINGIN","09:00",2,12,12,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","Ismi Safitri","403","CIBARENGKOK","09:00",2,9,9,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","Ismi Safitri","107","Cipeundeuy","10:00",3,13,13,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","Ismi Safitri","238","PRIMA JAYA 238","11:00",2,12,12,"Darma Jaya","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","Ismi Safitri","227","KAMPUNG PASAR","11:30",2,11,11,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","Ismi Safitri","376","KENANGA","12:00",2,10,10,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","Ismi Safitri","380","CIPICUNG 1","13:00",2,11,11,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","093","Lembayung","09:30",2,9,9,"Cimarga","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","167","Hanjuang","09:30",4,17,17,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","309","Trans 309","10:00",2,3,3,"Sunda Mekar","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","168","Panieungan","10:30",2,11,11,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","339","Dahlia","10:30",2,6,6,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","073","Harum","11:00",2,7,7,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","315","SILIH ASIH","11:00",1,1,1,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","076","Hidayah II","12:00",4,7,7,"Sunda Mekar","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","108","Maleber","12:00",3,10,10,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","337","Bringka","13:00",2,5,5,"Cijati","SITURAJA","Sumedang, Kab."],
+      ["SELASA","Muhamad Herman Syah","331","CAPRES KECE","14:00",3,13,13,"Cijati","SITURAJA","Sumedang, Kab."],
+      ["SELASA","Muhammad Elfan Apriyanto","332","Gampil Rizki","09:00",2,7,7,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["SELASA","Muhammad Elfan Apriyanto","182","Sukamanah","10:00",4,13,13,"Suka Jadi","WADO","Sumedang, Kab."],
+      ["SELASA","Muhammad Elfan Apriyanto","360","Kampung Naga","10:00",2,5,5,"Suka Jadi","WADO","Sumedang, Kab."],
+      ["SELASA","Muhammad Elfan Apriyanto","314","Sukamaju Morgana","11:00",2,7,7,"Ganjaresik","WADO","Sumedang, Kab."],
+      ["SELASA","Muhammad Elfan Apriyanto","323","ANGGREK","11:00",2,8,8,"Ganjaresik","WADO","Sumedang, Kab."],
+      ["SELASA","Muhammad Elfan Apriyanto","367","PECAHAN 182","12:00",2,8,8,"Suka Jadi","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","112","Aren Mulya","09:00",1,4,4,"Suka Jadi","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","173","Cipta Buana","10:30",2,10,10,"Ganjaresik","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","222","SRIKANDI","10:30",2,5,5,"Suka Jadi","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","249","RADEN PRABANGKARA 249","11:00",3,13,13,"Ganjaresik","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","002","Dana Karya","12:00",3,20,20,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","008","Makmur Jaya","12:30",2,7,7,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","155","Belpas","12:30",1,1,1,"Wado","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","163","Cital","13:00",1,1,1,"Suka Jadi","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","151","Murai","13:30",2,4,4,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["SELASA","Ratih Sania","009","Melati","14:30",3,14,14,"Wado","WADO","Sumedang, Kab."],
+      ["SELASA","Sari Wahyuni","352","CIMALELA MEKAR","09:00",2,9,9,"Mulyajaya","WADO","Sumedang, Kab."],
+      ["SELASA","Sari Wahyuni","388","BUNGA KENANGA","09:00",2,15,15,"Mulyajaya","WADO","Sumedang, Kab."],
+      ["SELASA","Sari Wahyuni","308","NAGRAK DEPAN","10:00",2,10,10,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["SELASA","Sari Wahyuni","204","KARYA BAKTI","12:00",2,5,5,"Cikareo Selatan","WADO","Sumedang, Kab."],
+      ["SELASA","Tri Widyanto","268","MERGER TLG 563","09:30",2,13,13,"Cisalak","LEMAHSUGIH","Majalengka, Kab."],
+      ["SELASA","Tri Widyanto","271","MERGER TLG 437","12:00",3,13,13,"Marga Jaya","LEMAHSUGIH","Majalengka, Kab."],
+      ["RABU","AHMAD ARIYANTO","033","Mawar","09:00",3,13,13,"Cisurat","WADO","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","047","Kisepat","10:00",3,11,11,"Sukapura","WADO","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","132","Sukamanah","10:30",3,19,19,"Cisurat","WADO","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","229","MACAN KUMBANG 229","10:30",2,2,2,"Tamansari","CIBUGEL","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","157","Cisepan","11:00",3,5,5,"Sukapura","WADO","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","213","MELATI","11:30",2,5,5,"Cisurat","WADO","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","340","DELIMA","11:30",2,6,6,"Cibugel","CIBUGEL","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","096","Amanah Jaya","12:30",2,5,5,"Tamansari","CIBUGEL","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","317","MELATY","12:30",1,4,4,"Sukaraja","CIBUGEL","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","061","Kenanga","13:00",3,4,3,"Tamansari","CIBUGEL","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","215","MAWAR","13:00",2,3,3,"Cisurat","WADO","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","156","Melati","13:30",2,7,7,"Tamansari","CIBUGEL","Sumedang, Kab."],
+      ["RABU","AHMAD ARIYANTO","208","CIKIHIANG","14:00",3,14,14,"Cisurat","WADO","Sumedang, Kab."],
+      ["RABU","Asep Riana","361","SUKAJAYA I","09:00",2,13,13,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Asep Riana","019","Al-Ikhlas","10:00",3,11,10,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Asep Riana","243","BERKAH 243","11:30",1,2,2,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Asep Riana","064","Cipari City","12:30",2,15,15,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Asep Yophan Hinayah","136","Cimirun","09:00",3,14,14,"Cikareo Selatan","WADO","Sumedang, Kab."],
+      ["RABU","Asep Yophan Hinayah","101","Bintang","09:45",2,9,9,"Cikareo Selatan","WADO","Sumedang, Kab."],
+      ["RABU","Asep Yophan Hinayah","059","Cakra Buana","10:30",3,15,15,"Cilangkap","WADO","Sumedang, Kab."],
+      ["RABU","Asep Yophan Hinayah","223","LESTARI","12:10",3,9,9,"Cikareo Selatan","WADO","Sumedang, Kab."],
+      ["RABU","Asep Yophan Hinayah","235","SARBOAH 235","12:45",4,10,10,"Wado","WADO","Sumedang, Kab."],
+      ["RABU","Asep Yophan Hinayah","148","Nusa Indah","13:30",2,5,5,"Wado","WADO","Sumedang, Kab."],
+      ["RABU","BARKAH RAMADHONI","334","BERKAH JAYA","09:00",2,16,15,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["RABU","BARKAH RAMADHONI","401","SKINER GRUP","09:30",2,10,10,"Cilopang","CISITU","Sumedang, Kab."],
+      ["RABU","BARKAH RAMADHONI","355","MELATI","10:00",2,8,8,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["RABU","BARKAH RAMADHONI","373","Barokah","11:00",1,1,1,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["RABU","BARKAH RAMADHONI","394","CEMPAKA","11:00",2,9,9,"Cisitu","CISITU","Sumedang, Kab."],
+      ["RABU","BARKAH RAMADHONI","160","Kebandung","11:30",2,8,8,"Pajagan","CISITU","Sumedang, Kab."],
+      ["RABU","Garry Ginanjar Baehaqi","070","Tim Sukses","09:30",2,7,7,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Garry Ginanjar Baehaqi","171","Perum","09:30",2,4,4,"Cipeundeuy","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Garry Ginanjar Baehaqi","075","Al-Barakallah","10:00",2,6,6,"Kirisik","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Garry Ginanjar Baehaqi","141","Cibareubeu","12:00",2,4,4,"Sukamanah","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Garry Ginanjar Baehaqi","143","Mutiara","13:00",2,5,5,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Garry Ginanjar Baehaqi","118","Sari Barokah","13:30",2,6,6,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Garry Ginanjar Baehaqi","040","Sindang Rena","14:00",3,6,6,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Ismi Safitri","372","MECIS","09:00",2,17,17,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["RABU","Ismi Safitri","294","MAWAR PUTIH 294","10:00",2,11,11,"Cieunteung","DARMARAJA","Sumedang, Kab."],
+      ["RABU","Ismi Safitri","354","SEJAHTERA","10:30",2,11,11,"Cieunteung","DARMARAJA","Sumedang, Kab."],
+      ["RABU","Ismi Safitri","186","BERKAH","12:00",2,15,15,"Suka Ratu","DARMARAJA","Sumedang, Kab."],
+      ["RABU","Ismi Safitri","304","sukasari","12:00",2,7,7,"Cieunteung","DARMARAJA","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","062","Delima","09:00",3,12,12,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","088","Delima","09:00",2,3,3,"Cikeusi","DARMARAJA","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","165","Cetar","09:30",2,3,3,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","138","Mekar Asih","10:00",2,5,5,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","063","Mawar Bodas","11:30",2,8,8,"Karang Pakuan","DARMARAJA","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","115","Dadali","11:30",2,10,10,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","172","Rukun Sejahtera","12:00",2,7,7,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","099","Durian","12:30",3,9,9,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["RABU","Muhamad Herman Syah","325","IRENE","13:00",2,2,2,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["RABU","Muhammad Elfan Apriyanto","203","MEKAR WANGI","09:00",2,6,6,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Muhammad Elfan Apriyanto","200","SRI REZEKI","10:00",1,6,6,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Muhammad Elfan Apriyanto","120","Buana Cakra","10:30",3,10,10,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Muhammad Elfan Apriyanto","202","ANGGREK","11:30",2,10,10,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Muhammad Elfan Apriyanto","189","CEMPAKA","13:30",2,8,8,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Ratih Sania","092","Perpecahan Center 009","08:30",1,5,5,"Wado","WADO","Sumedang, Kab."],
+      ["RABU","Ratih Sania","041","Pasir Padang","09:00",1,3,3,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Ratih Sania","037","Pasir Sireum","10:30",1,1,1,"Cisurat","WADO","Sumedang, Kab."],
+      ["RABU","Ratih Sania","149","Siji Loro","11:00",3,11,11,"Wado","WADO","Sumedang, Kab."],
+      ["RABU","Ratih Sania","232","NUSAINDAH 232","13:00",4,13,13,"Wado","WADO","Sumedang, Kab."],
+      ["RABU","Ratih Sania","001","Al-Barokah","14:30",3,11,11,"Wado","WADO","Sumedang, Kab."],
+      ["RABU","Sari Wahyuni","228","MAWAR MERAH","09:00",2,8,8,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Sari Wahyuni","404","QUEEN","09:00",2,8,6,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["RABU","Sari Wahyuni","341","SARI ASIH","11:00",2,6,6,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Sari Wahyuni","054","White Rose","12:00",3,21,20,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Sari Wahyuni","110","Mekar","12:30",3,14,14,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Sari Wahyuni","067","Sejahtera","13:00",2,4,4,"Cimungkal","WADO","Sumedang, Kab."],
+      ["RABU","Tri Widyanto","277","MERGER TLG 492","09:00",2,10,10,"Cibulan","LEMAHSUGIH","Majalengka, Kab."],
+      ["RABU","Tri Widyanto","350","BLOK CIBITUNG","09:30",2,13,13,"Sadawangi","LEMAHSUGIH","Majalengka, Kab."],
+      ["RABU","Tri Widyanto","278","MERGER TLG 439","10:00",2,8,7,"Borogojol","LEMAHSUGIH","Majalengka, Kab."],
+      ["RABU","Tri Widyanto","262","MERGER TLG 396","12:00",2,6,6,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["KAMIS","AHMAD ARIYANTO","069","Sugih","10:00",4,6,6,"Ranggon","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","AHMAD ARIYANTO","392","KIRISIK INDAH","10:00",2,16,15,"Kirisik","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","AHMAD ARIYANTO","098","Perpecahan Center 013","10:30",2,8,8,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","AHMAD ARIYANTO","257","SAUNG DEWO 257","11:00",2,9,9,"Darma Raja","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","AHMAD ARIYANTO","362","SEJAHTERA II","13:30",2,6,6,"Neglasari","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","Amelia Nurjanah","356","MEKARJAYA","09:00",2,11,11,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Amelia Nurjanah","048","Family Group","10:00",2,15,14,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Amelia Nurjanah","400","MELATI","10:00",2,8,8,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Amelia Nurjanah","211","AMANAH","12:30",3,18,18,"Mulyajaya","WADO","Sumedang, Kab."],
+      ["KAMIS","Amelia Nurjanah","390","BARYATI","13:00",2,8,8,"Mulyajaya","WADO","Sumedang, Kab."],
+      ["KAMIS","Asep Riana","193","DAHLIA","09:00",2,13,11,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["KAMIS","Asep Riana","329","MELATI","09:00",4,9,9,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["KAMIS","Asep Riana","389","ERENGEL","09:00",2,11,11,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["KAMIS","Asep Riana","307","AWILEGA BERKAH","10:00",2,12,12,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["KAMIS","Asep Riana","311","CIMEDANG BAROKAH","10:00",2,14,14,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["KAMIS","Asep Riana","330","AL KAHFI","11:00",3,12,12,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["KAMIS","Asep Riana","342","GANDOANG","12:00",2,11,9,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["KAMIS","Asep Yophan Hinayah","353","THURSINA","09:00",2,12,12,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Asep Yophan Hinayah","102","Bunga Tulip","10:00",3,17,16,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Asep Yophan Hinayah","357","Mawar Bahagia","10:30",1,2,2,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Asep Yophan Hinayah","066","Hidayah","11:35",5,23,22,"Kirisik","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Asep Yophan Hinayah","319","Sukamanah berkah","13:00",2,10,10,"Sukamanah","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Asep Yophan Hinayah","043","Mawar Pink","13:30",2,6,6,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","BARKAH RAMADHONI","298","Pecahan ctr 103","09:00",3,18,18,"Cikeusi","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","BARKAH RAMADHONI","103","Citgir","09:30",3,13,13,"Cikeusi","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","BARKAH RAMADHONI","083","Bayu Mekar","10:00",3,18,17,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["KAMIS","BARKAH RAMADHONI","114","Ancol - Al Huda","10:30",3,20,20,"Ancol","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","BARKAH RAMADHONI","292","Al-Barokah 292","11:30",2,17,15,"Cinangsi","CISITU","Sumedang, Kab."],
+      ["KAMIS","BARKAH RAMADHONI","351","BOJONG INDAH","11:30",2,6,6,"Cikeusi","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","BARKAH RAMADHONI","084","Bina Sejahtera","12:00",2,11,11,"Cikeusi","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","BARKAH RAMADHONI","079","Sinar Terang","13:00",3,8,8,"Cikeusi","DARMARAJA","Sumedang, Kab."],
+      ["KAMIS","Garry Ginanjar Baehaqi","004","Amanah","09:30",2,6,6,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Garry Ginanjar Baehaqi","045","Berkah","09:30",2,4,4,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Garry Ginanjar Baehaqi","052","Cempaka II","13:00",3,5,5,"Kirisik","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ismi Safitri","345","BASRENG GOTIK","09:00",2,14,13,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["KAMIS","Ismi Safitri","385","CEMARA","10:00",3,11,8,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["KAMIS","Ismi Safitri","127","Perpecahan Center 056","11:00",2,5,5,"Lingga Jaya","CISITU","Sumedang, Kab."],
+      ["KAMIS","Ismi Safitri","338","Pascor","12:00",2,11,11,"Situ Mekar","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","091","Binangkit","09:00",2,9,9,"Cisitu","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","162","Seruni","09:00",2,6,6,"Pajagan","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","126","Mekar Jaya","09:30",2,5,5,"Pajagan","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","164","Cikahuripan","10:00",3,14,14,"Cigintung","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","170","Sauyunan","10:00",4,17,17,"Pajagan","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","121","Kahuripan","10:30",3,7,7,"Pajagan","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","184","Pokemon","11:00",3,11,11,"Cigintung","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","300","DAHLIA 300","11:00",2,3,3,"Cigintung","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","152","Kebon Kopi","11:30",4,14,14,"Cisitu","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","176","Dayuni","11:30",2,11,11,"Cigintung","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","124","Al - Ikhlas II","12:00",1,5,5,"Cisitu","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","131","Selancar","12:00",1,4,4,"Cisitu","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhamad Herman Syah","181","Sarongge","12:30",2,7,7,"Cigintung","CISITU","Sumedang, Kab."],
+      ["KAMIS","Muhammad Elfan Apriyanto","393","SILA SIDAKEP","09:00",2,10,9,"Cipasang","CIBUGEL","Sumedang, Kab."],
+      ["KAMIS","Muhammad Elfan Apriyanto","046","Dahlia","09:30",2,8,8,"Tamansari","CIBUGEL","Sumedang, Kab."],
+      ["KAMIS","Muhammad Elfan Apriyanto","324","cibugel 324","10:30",2,15,14,"Cibugel","CIBUGEL","Sumedang, Kab."],
+      ["KAMIS","Muhammad Elfan Apriyanto","060","Anggrek","11:00",2,14,14,"Tamansari","CIBUGEL","Sumedang, Kab."],
+      ["KAMIS","Muhammad Elfan Apriyanto","111","Fraditia","13:00",2,9,9,"Cibugel","CIBUGEL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","188","KEJORA","09:30",2,3,3,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","218","ANDIN","09:30",2,9,9,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","175","Anggrek","10:30",3,11,11,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","196","SRI REZEKI","10:30",1,4,4,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","038","Barokah Jaya","11:00",3,8,8,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","225","ANGGARANU","11:00",2,8,8,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","236","CEMPAKA 236","11:00",2,5,5,"Suka Jadi","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","014","Samawa","11:30",2,7,7,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","197","SUKALUYU","11:30",2,12,12,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","210","BUNI ASIH","11:30",2,12,12,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","065","Cijeruk","12:00",2,4,4,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","195","MELATI","12:00",2,6,6,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","022","Al-Ikhlas II","12:30",5,13,13,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","026","Hasanah","12:30",3,10,10,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","081","Sakura II","12:30",3,6,6,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","089","Bunga Kenanga","13:00",2,5,5,"Mulyajaya","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","310","HIBARTIS 3","13:30",2,3,3,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","016","Anugerah","14:00",2,4,4,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","090","Dahlia III","14:30",2,2,2,"Mulyajaya","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","287","CERIAH 287","15:00",2,7,7,"Wado","WADO","Sumedang, Kab."],
+      ["KAMIS","Ratih Sania","174","Mentari Bersinar","16:00",2,6,6,"Mulyajaya","WADO","Sumedang, Kab."],
+      ["KAMIS","Sari Wahyuni","142","Mandiri","09:00",2,9,9,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Sari Wahyuni","086","Pinglap Panganginan","10:30",4,15,15,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Sari Wahyuni","139","Pinglap","11:00",4,16,15,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Sari Wahyuni","365","MAWAR MERAH","11:30",2,11,11,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Sari Wahyuni","248","PANGKALAN 248","12:00",4,20,19,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Sari Wahyuni","255","AMANAH 255","12:30",2,9,9,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["KAMIS","Tri Widyanto","276","MERGER TLG 414","09:00",3,6,6,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["KAMIS","Tri Widyanto","266","MERGER TLG 561","10:00",2,2,2,"Kepuh","LEMAHSUGIH","Majalengka, Kab."],
+      ["KAMIS","Tri Widyanto","281","MERGER TLG 474","10:00",2,11,11,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["KAMIS","Tri Widyanto","295","GEBOY 295","13:00",2,10,10,"Lemah Putih","LEMAHSUGIH","Majalengka, Kab."],
+      ["JUMAT","Amelia Nurjanah","230","MAWAR MERAH 230","09:30",3,9,9,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Amelia Nurjanah","006","Amanah II","11:00",3,13,13,"Wado","WADO","Sumedang, Kab."],
+      ["JUMAT","Amelia Nurjanah","214","BONZI","12:00",2,5,5,"Mulyajaya","WADO","Sumedang, Kab."],
+      ["JUMAT","Asep Riana","301","BERKAH","09:00",2,11,11,"Cikareo Selatan","WADO","Sumedang, Kab."],
+      ["JUMAT","Asep Riana","306","MAHKOTA","10:00",2,16,16,"Cikareo Utara","WADO","Sumedang, Kab."],
+      ["JUMAT","Asep Yophan Hinayah","246","BAROKAH3 246","09:15",1,2,2,"Kirisik","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Asep Yophan Hinayah","207","SAKURA","10:15",2,7,7,"Cipeundeuy","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","BARKAH RAMADHONI","205","MAHMUD","09:00",3,12,12,"Tari Kolot","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","BARKAH RAMADHONI","247","KOMIDA MEKAR 247","10:00",3,20,20,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Ismi Safitri","206","CEMPAKA","09:00",2,11,10,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["JUMAT","Ismi Safitri","322","gampang rizki","10:00",2,7,7,"Cilengkrang","WADO","Sumedang, Kab."],
+      ["JUMAT","Ratih Sania","104","Sindang Asih","09:00",2,6,6,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Ratih Sania","237","SUKAMUKTI 237","09:00",3,8,8,"Sari Mekar","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Ratih Sania","239","MEKAR BUNGA 239","09:00",2,10,10,"Banjarsari","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Ratih Sania","007","Barokah","10:00",3,8,8,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Ratih Sania","250","Hibartis 250","10:00",2,6,6,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Sari Wahyuni","212","ANGGREK","09:00",2,12,12,"Sirnasari","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Sari Wahyuni","221","LA HAULA","09:30",3,15,15,"Pawenang","JATINUNGGAL","Sumedang, Kab."],
+      ["JUMAT","Tri Widyanto","217","BERKAH","10:00",3,9,9,"Cimungkal","WADO","Sumedang, Kab."]
+    ];
+
+    const STORAGE_KEY_CONDITIONS = 'komida_wado_center_conditions_v2';
+    const STORAGE_KEY_NOTES = 'komida_wado_center_notes_v2';
+    const STORAGE_KEY_SCHEDULE = 'komida_wado_uploaded_schedule_v1';
+    const STORAGE_KEY_WORKSPACE_PREF = 'komida_wado_workspace_pref_v1';
+    const memoryFallback = { conditions: {}, notes: {}, uploadedSchedule: null };
+
+    // =========================================================================
+    // 2. KONFIGURASI & STATE FIREBASE CLOUD SYNC LINTAS PERANGKAT
+    // =========================================================================
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'komida-wado-center-meeting';
+    let firebaseApp = null;
+    let auth = null;
+    let db = null;
+    let currentUser = null;
+    let unsubscribeWorkspaceSchedule = null;
+    let unsubscribeWorkspaceAnnotations = null;
+    let noteSyncTimers = {};
+    let isApplyingRemoteSnapshot = false;
+
+    const cloudState = {
+      available: false,
+      connected: false,
+      workspaceMode: 'shared', // 'shared' | 'custom' | 'personal'
+      customCode: 'komida_wado_shared',
+      lastSyncedAt: '',
+      scheduleUpdatedAtMs: 0
+    };
+
+    function loadWorkspacePreferences() {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY_WORKSPACE_PREF);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && ['shared', 'custom', 'personal'].includes(parsed.workspaceMode)) {
+            cloudState.workspaceMode = parsed.workspaceMode;
+          }
+          if (parsed && typeof parsed.customCode === 'string' && parsed.customCode.trim()) {
+            cloudState.customCode = sanitizeWorkspaceCode(parsed.customCode);
+          }
+        }
+      } catch (_) {}
+    }
+
+    function saveWorkspacePreferences() {
+      try {
+        window.localStorage.setItem(STORAGE_KEY_WORKSPACE_PREF, JSON.stringify({
+          workspaceMode: cloudState.workspaceMode,
+          customCode: cloudState.customCode
+        }));
+      } catch (_) {}
+    }
+
+    function sanitizeWorkspaceCode(raw) {
+      const cleaned = String(raw || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+      return cleaned || 'komida_wado_shared';
+    }
+
+    function getActiveWorkspaceId() {
+      if (cloudState.workspaceMode === 'custom') {
+        return sanitizeWorkspaceCode(cloudState.customCode);
+      }
+      return 'komida_wado_shared';
+    }
+
+    // Referensi Dokumen Firestore mematuhi aturan path ketat:
+    // Publik/Cabang/Tim: /artifacts/{appId}/public/data/{collectionName}/{docId}
+    // Pribadi/Akun: /artifacts/{appId}/users/{userId}/{collectionName}/{docId}
+    function getWorkspaceDocRefs() {
+      if (!db || !currentUser) return null;
+      if (cloudState.workspaceMode === 'personal') {
+        const uid = currentUser.uid;
+        return {
+          scheduleDoc: doc(db, 'artifacts', appId, 'users', uid, 'center_meeting_sync', 'schedule'),
+          annotationsCol: collection(db, 'artifacts', appId, 'users', uid, 'center_meeting_annotations'),
+          annotationDoc: (docId) => doc(db, 'artifacts', appId, 'users', uid, 'center_meeting_annotations', docId)
+        };
+      }
+      const wsId = getActiveWorkspaceId();
+      return {
+        scheduleDoc: doc(db, 'artifacts', appId, 'public', 'data', `cm_schedule_${wsId}`, 'active'),
+        annotationsCol: collection(db, 'artifacts', appId, 'public', 'data', `cm_annotations_${wsId}`),
+        annotationDoc: (docId) => doc(db, 'artifacts', appId, 'public', 'data', `cm_annotations_${wsId}`, docId)
+      };
+    }
+
+    function updateCloudStatusUI(statusType, textLabel) {
+      const dotEl = document.getElementById('cloudSyncDot');
+      const textEl = document.getElementById('cloudSyncStatusText');
+      const headerLabelEl = document.getElementById('cloudWorkspaceHeaderLabel');
+      const modalBadgeEl = document.getElementById('modalCloudConnBadge');
+      const modalWsNameEl = document.getElementById('modalActiveWorkspaceName');
+
+      let wsShort = 'Cabang WADO';
+      let wsFull = 'Ruang Kerja Bersama Cabang WADO (komida_wado_shared)';
+      if (cloudState.workspaceMode === 'custom') {
+        const code = getActiveWorkspaceId();
+        wsShort = `Tim: ${code}`;
+        wsFull = `Ruang Kerja Tim Kustom (${code})`;
+      } else if (cloudState.workspaceMode === 'personal') {
+        wsShort = 'Akun Pribadi';
+        wsFull = `Ruang Kerja Pribadi (${currentUser?.email || currentUser?.uid || 'Akun'})`;
+      }
+
+      if (headerLabelEl) headerLabelEl.textContent = `Sync: ${wsShort}`;
+      if (modalWsNameEl) modalWsNameEl.textContent = wsFull;
+
+      if (dotEl && textEl) {
+        if (statusType === 'connected') {
+          dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400';
+          textEl.textContent = textLabel || 'Cloud Aktif • Real-Time';
+          if (modalBadgeEl) {
+            modalBadgeEl.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800';
+            modalBadgeEl.textContent = 'Terhubung Real-Time';
+          }
+        } else if (statusType === 'syncing') {
+          dotEl.className = 'w-2 h-2 rounded-full bg-amber-300 animate-ping';
+          textEl.textContent = textLabel || 'Menyinkronkan...';
+          if (modalBadgeEl) {
+            modalBadgeEl.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800';
+            modalBadgeEl.textContent = 'Menyinkronkan Data...';
+          }
+        } else {
+          dotEl.className = 'w-2 h-2 rounded-full bg-slate-300';
+          textEl.textContent = textLabel || 'Mode Lokal (Offline)';
+          if (modalBadgeEl) {
+            modalBadgeEl.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-200 text-slate-700';
+            modalBadgeEl.textContent = 'Offline / Penyimpanan Lokal';
+          }
+        }
+      }
+    }
+
+    function updateAuthModalUI() {
+      const uidEl = document.getElementById('modalCurrentUserId');
+      const authTypeBadge = document.getElementById('modalAuthTypeBadge');
+      const signedInBox = document.getElementById('authSignedInBox');
+      const loginFormsBox = document.getElementById('authLoginFormsBox');
+      const displayNameEl = document.getElementById('authUserDisplayName');
+      const emailEl = document.getElementById('authUserEmail');
+
+      const sharedBtn = document.getElementById('wsOptionSharedBtn');
+      const personalBtn = document.getElementById('wsOptionPersonalBtn');
+      const customInput = document.getElementById('customWorkspaceCodeInput');
+
+      if (customInput && cloudState.workspaceMode === 'custom') {
+        customInput.value = cloudState.customCode;
+      }
+
+      if (sharedBtn && personalBtn) {
+        if (cloudState.workspaceMode === 'shared') {
+          sharedBtn.className = 'w-full text-left p-3 rounded-xl border-2 border-emerald-600 bg-emerald-50/60 transition-all cursor-pointer';
+          personalBtn.className = 'w-full text-left p-3 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition-all cursor-pointer';
+        } else if (cloudState.workspaceMode === 'personal') {
+          sharedBtn.className = 'w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-white transition-all cursor-pointer';
+          personalBtn.className = 'w-full text-left p-3 rounded-xl border-2 border-emerald-600 bg-emerald-50/60 transition-all cursor-pointer';
+        } else {
+          sharedBtn.className = 'w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-white transition-all cursor-pointer';
+          personalBtn.className = 'w-full text-left p-3 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition-all cursor-pointer';
+        }
+      }
+
+      if (!currentUser) {
+        if (uidEl) uidEl.textContent = 'Belum terhubung';
+        return;
+      }
+
+      if (uidEl) uidEl.textContent = currentUser.uid;
+
+      const isNamedUser = !currentUser.isAnonymous && (currentUser.email || currentUser.displayName);
+      if (isNamedUser) {
+        if (authTypeBadge) authTypeBadge.textContent = 'Akun Terverifikasi';
+        if (signedInBox) signedInBox.classList.remove('hidden');
+        if (loginFormsBox) loginFormsBox.classList.add('hidden');
+        if (displayNameEl) displayNameEl.textContent = currentUser.displayName || 'Petugas KOMIDA WADO';
+        if (emailEl) emailEl.textContent = currentUser.email || currentUser.uid;
+      } else {
+        if (authTypeBadge) authTypeBadge.textContent = 'Sesi Perangkat Otomatis';
+        if (signedInBox) signedInBox.classList.add('hidden');
+        if (loginFormsBox) loginFormsBox.classList.remove('hidden');
+      }
+    }
+
+    // =========================================================================
+    // 3. NORMALISASI & HELPER DATA JADWAL
+    // =========================================================================
+    function normalizeRowsToSchedule(rows) {
+      return (Array.isArray(rows) ? rows : []).map((row, idx) => {
+        const r = Array.isArray(row) ? row : [];
+        return {
+          index: idx,
+          hari: String(r[0] || '').trim().toUpperCase(),
+          officer: String(r[1] || '').trim(),
+          centerId: String(r[2] ?? '').trim(),
+          centerName: String(r[3] ?? '').trim(),
+          jam: String(r[4] ?? '').trim(),
+          groups: Number(r[5]) || 0,
+          members: Number(r[6]) || 0,
+          clients: Number(r[7]) || 0,
+          desa: String(r[8] ?? '').trim(),
+          kecamatan: String(r[9] ?? '').trim(),
+          kabupaten: String(r[10] ?? '').trim()
+        };
+      }).filter((item) => item.centerId || item.centerName || item.officer);
+    }
+
+    let SCHEDULE_DATA = normalizeRowsToSchedule(DEFAULT_SCHEDULE_ROWS);
+
+    const state = {
+      activeTab: 'mingguan',
+      day: 'ALL',
+      officer: 'ALL',
+      kecamatan: 'ALL',
+      condition: 'ALL',
+      search: '',
+      sortBy: 'default',
+      viewMode: 'flat',
+      columnMode: 'full',
+      filteredData: [...SCHEDULE_DATA],
+      conditions: {}, // nilai: 'HIJAU' | 'MERAH'
+      notes: {},
+      datasetMeta: {
+        isUploaded: false,
+        fileName: '',
+        uploadedAt: ''
+      }
+    };
+
+    const wilayahCharts = {
+      kecamatan: null,
+      harian: null
+    };
+
+    const fmtNum = (n) => new Intl.NumberFormat('id-ID').format(Number(n) || 0);
+
+    const escapeHtml = (str) => String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    function normalizeCenterId(val) {
+      if (val === null || val === undefined) return '';
+      let raw = String(val).trim();
+      if (!raw) return '';
+      if (/^\d+\.0+$/.test(raw)) raw = raw.replace(/\.0+$/, '');
+      if (/^\d{1,2}$/.test(raw)) raw = raw.padStart(3, '0');
+      const lower = raw.toLowerCase();
+      const stripped = lower.replace(/^0+/, '');
+      return stripped || '0';
+    }
+
+    function formatCenterIdDisplay(val) {
+      if (val === null || val === undefined) return '';
+      let raw = String(val).trim();
+      if (!raw) return '';
+      if (/^\d+\.0+$/.test(raw)) raw = raw.replace(/\.0+$/, '');
+      if (/^\d{1,2}$/.test(raw)) raw = raw.padStart(3, '0');
+      return raw;
+    }
+
+    function normalizeCenterName(val) {
+      return String(val ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    function normalizeDayValue(val) {
+      if (val === null || val === undefined) return '';
+      const firstLine = String(val).split(/\r?\n/)[0].trim().toUpperCase();
+      const cleaned = firstLine.replace(/[^A-Z']/g, '');
+      if (cleaned === "JUM'AT" || cleaned === 'JUMAT') return 'JUMAT';
+      if (['SENIN', 'SELASA', 'RABU', 'KAMIS', 'SABTU', 'MINGGU', 'TOTAL'].includes(cleaned)) {
+        return cleaned;
+      }
+      return '';
+    }
+
+    function cleanOfficerName(val) {
+      if (val === null || val === undefined) return '';
+      let str = String(val).split(/\r?\n/)[0].trim();
+      str = str.replace(/^officer\s*(name)?\s*:\s*/i, '').trim();
+      str = str.replace(/\b(total\s*center|total\s*group|total\s*member|total\s*client)\s*=.*$/i, '').trim();
+      str = str.replace(/\s*[-|•]\s*total\s*center.*$/i, '').trim();
+      return str;
+    }
+
+    function normalizeTimeValue(val) {
+      if (val === null || val === undefined || val === '') return '';
+      if (val instanceof Date && !Number.isNaN(val.getTime())) {
+        return `${String(val.getHours()).padStart(2, '0')}:${String(val.getMinutes()).padStart(2, '0')}`;
+      }
+      if (typeof val === 'number' && Number.isFinite(val)) {
+        const frac = val >= 1 ? (val % 1) : val;
+        const totalMinutes = Math.round(frac * 24 * 60) % (24 * 60);
+        return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+      }
+      const str = String(val).trim();
+      if (!str) return '';
+      if (/^0?\.\d+$/.test(str)) {
+        const num = Number(str);
+        if (Number.isFinite(num)) {
+          const totalMinutes = Math.round((num % 1) * 24 * 60) % (24 * 60);
+          return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+        }
+      }
+      const match = str.match(/(\d{1,2})[:.](\d{2})(?::(\d{2}))?/);
+      if (match) {
+        return `${String(Number(match[1])).padStart(2, '0')}:${String(Number(match[2])).padStart(2, '0')}`;
+      }
+      return str.slice(0, 5);
+    }
+
+    function parseSafeInt(val) {
+      if (val === null || val === undefined || val === '') return 0;
+      if (typeof val === 'number') return Number.isFinite(val) ? (parseInt(Number(val), 10) || 0) : 0;
+      const cleaned = String(val).replace(/,/g, '').trim();
+      const num = Number(cleaned);
+      return Number.isFinite(num) ? (parseInt(num, 10) || 0) : 0;
+    }
+
+    function showRuntimeErrorBanner(msg) {
+      const b = document.getElementById('runtimeErrorBanner');
+      const t = document.getElementById('runtimeErrorText');
+      if (b && t) {
+        t.textContent = msg;
+        b.classList.remove('hidden');
+      }
+    }
+
+    function dismissErrorBanner() {
+      const b = document.getElementById('runtimeErrorBanner');
+      if (b) b.classList.add('hidden');
+    }
+
+    function refreshIconsSafe() {
+      try {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      } catch (_) {}
+    }
+
+    function getRowKey(item) {
+      return `${item.hari}__${item.officer}__${item.centerId}__${item.jam}__#${item.index}`;
+    }
+
+    // ID Dokumen Firestore aman & deterministik per center (untuk sinkronisasi lintas perangkat)
+    function getAnnotationFirestoreDocId(item) {
+      const normId = normalizeCenterId(item.centerId) || 'noid';
+      const normName = normalizeCenterName(item.centerName).replace(/[^a-z0-9]/g, '_').slice(0, 48) || 'noname';
+      const dayToken = String(item.hari || '').toLowerCase().replace(/[^a-z]/g, '') || 'day';
+      return `${normId}__${normName}__${dayToken}`;
+    }
+
+    // Pencocokan kondisi & catatan lintas jadwal (Center ID + Center Name)
+    function buildAnnotationLookup(records, conditionsMap, notesMap) {
+      const byIdAndName = new Map();
+      const byIdOnly = new Map();
+      const byNameOnly = new Map();
+
+      (records || []).forEach((rec) => {
+        const key = getRowKey(rec);
+        const cond = conditionsMap[key];
+        const note = notesMap[key];
+        const hasCond = cond === 'HIJAU' || cond === 'MERAH';
+        const hasNote = typeof note === 'string' && note.trim() !== '';
+        if (!hasCond && !hasNote) return;
+
+        const normId = normalizeCenterId(rec.centerId);
+        const normName = normalizeCenterName(rec.centerName);
+        const entry = {
+          cond: hasCond ? cond : '',
+          note: hasNote ? note : ''
+        };
+
+        if (normId && normName) byIdAndName.set(`${normId}|||${normName}`, entry);
+        if (normId && !byIdOnly.has(normId)) byIdOnly.set(normId, entry);
+        if (normName && !byNameOnly.has(normName)) byNameOnly.set(normName, entry);
+      });
+
+      return { byIdAndName, byIdOnly, byNameOnly };
+    }
+
+    function matchAnnotationForNewItem(newItem, prevRecords, prevConditions, prevNotes) {
+      const key = getRowKey(newItem);
+      const directCond = prevConditions[key];
+      const directNote = prevNotes[key];
+      if ((directCond === 'HIJAU' || directCond === 'MERAH') || (typeof directNote === 'string' && directNote.trim() !== '')) {
+        return {
+          cond: (directCond === 'HIJAU' || directCond === 'MERAH') ? directCond : '',
+          note: typeof directNote === 'string' ? directNote : ''
+        };
+      }
+
+      const lookup = buildAnnotationLookup(prevRecords, prevConditions, prevNotes);
+      const normId = normalizeCenterId(newItem.centerId);
+      const normName = normalizeCenterName(newItem.centerName);
+
+      if (normId && normName && lookup.byIdAndName.has(`${normId}|||${normName}`)) {
+        return lookup.byIdAndName.get(`${normId}|||${normName}`);
+      }
+      if (normId && lookup.byIdOnly.has(normId)) {
+        return lookup.byIdOnly.get(normId);
+      }
+      if (normName && lookup.byNameOnly.has(normName)) {
+        return lookup.byNameOnly.get(normName);
+      }
+      return { cond: '', note: '' };
+    }
+
+    // =========================================================================
+    // 4. OPERASI PENYIMPANAN CLOUD FIRESTORE (REAL-TIME)
+    // =========================================================================
+    async function pushScheduleToCloud(scheduleArray, metaInfo) {
+      const refs = getWorkspaceDocRefs();
+      if (!refs || !currentUser || isApplyingRemoteSnapshot) return;
+
+      try {
+        updateCloudStatusUI('syncing', 'Mengunggah Jadwal ke Cloud...');
+        const compactRows = scheduleArray.map((d) => [
+          d.hari, d.officer, d.centerId, d.centerName, d.jam,
+          d.groups, d.members, d.clients, d.desa, d.kecamatan, d.kabupaten
+        ]);
+        const updatedAtMs = Date.now();
+        cloudState.scheduleUpdatedAtMs = updatedAtMs;
+
+        await setDoc(refs.scheduleDoc, {
+          isUploaded: Boolean(metaInfo && metaInfo.isUploaded),
+          fileName: String((metaInfo && metaInfo.fileName) || ''),
+          uploadedAt: String((metaInfo && metaInfo.uploadedAt) || ''),
+          rowsJson: JSON.stringify(compactRows),
+          totalCenters: scheduleArray.length,
+          updatedAtMs,
+          updatedBy: currentUser.email || currentUser.uid,
+          updatedAt: serverTimestamp()
+        });
+
+        updateCloudStatusUI('connected', 'Cloud Aktif • Jadwal Tersinkron');
+      } catch (err) {
+        updateCloudStatusUI('offline', 'Gagal Sync Jadwal (Tersimpan Lokal)');
+      }
+    }
+
+    async function pushSingleAnnotationToCloud(item) {
+      const refs = getWorkspaceDocRefs();
+      if (!refs || !currentUser || isApplyingRemoteSnapshot) return;
+
+      try {
+        const rowKey = getRowKey(item);
+        const cond = state.conditions[rowKey] || '';
+        const note = state.notes[rowKey] || '';
+        const docId = getAnnotationFirestoreDocId(item);
+
+        updateCloudStatusUI('syncing', 'Menyimpan ke Cloud...');
+        await setDoc(refs.annotationDoc(docId), {
+          centerId: item.centerId,
+          centerName: item.centerName,
+          normId: normalizeCenterId(item.centerId),
+          normName: normalizeCenterName(item.centerName),
+          hari: item.hari,
+          officer: item.officer,
+          condition: cond,
+          note: note,
+          updatedBy: currentUser.email || currentUser.uid,
+          updatedAtMs: Date.now(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        updateCloudStatusUI('connected', 'Cloud Aktif • Real-Time');
+      } catch (_) {
+        updateCloudStatusUI('offline', 'Tersimpan Lokal (Offline)');
+      }
+    }
+
+    async function pushAllAnnotationsBatchToCloud() {
+      const refs = getWorkspaceDocRefs();
+      if (!refs || !currentUser || isApplyingRemoteSnapshot) return;
+
+      try {
+        updateCloudStatusUI('syncing', 'Menyinkronkan Semua Kondisi...');
+        const promises = [];
+        SCHEDULE_DATA.forEach((item) => {
+          const key = getRowKey(item);
+          const cond = state.conditions[key] || '';
+          const note = state.notes[key] || '';
+          if (cond || note) {
+            const docId = getAnnotationFirestoreDocId(item);
+            promises.push(setDoc(refs.annotationDoc(docId), {
+              centerId: item.centerId,
+              centerName: item.centerName,
+              normId: normalizeCenterId(item.centerId),
+              normName: normalizeCenterName(item.centerName),
+              hari: item.hari,
+              officer: item.officer,
+              condition: cond,
+              note: note,
+              updatedBy: currentUser.email || currentUser.uid,
+              updatedAtMs: Date.now(),
+              updatedAt: serverTimestamp()
+            }, { merge: true }));
+          }
+        });
+        if (promises.length > 0) {
+          await Promise.all(promises);
+        }
+        updateCloudStatusUI('connected', 'Cloud Aktif • Real-Time');
+      } catch (_) {
+        updateCloudStatusUI('offline', 'Tersimpan Lokal');
+      }
+    }
+
+    async function clearAllCloudAnnotations() {
+      const refs = getWorkspaceDocRefs();
+      if (!refs || !currentUser) return;
+
+      try {
+        updateCloudStatusUI('syncing', 'Membersihkan Data Cloud...');
+        const promises = SCHEDULE_DATA.map((item) => {
+          const docId = getAnnotationFirestoreDocId(item);
+          return setDoc(refs.annotationDoc(docId), {
+            centerId: item.centerId,
+            centerName: item.centerName,
+            normId: normalizeCenterId(item.centerId),
+            normName: normalizeCenterName(item.centerName),
+            hari: item.hari,
+            condition: '',
+            note: '',
+            updatedBy: currentUser.email || currentUser.uid,
+            updatedAtMs: Date.now(),
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        });
+        await Promise.all(promises);
+        updateCloudStatusUI('connected', 'Cloud Aktif • Real-Time');
+      } catch (_) {
+        updateCloudStatusUI('offline', 'Tersimpan Lokal');
+      }
+    }
+
+    function attachWorkspaceListeners() {
+      if (unsubscribeWorkspaceSchedule) {
+        unsubscribeWorkspaceSchedule();
+        unsubscribeWorkspaceSchedule = null;
+      }
+      if (unsubscribeWorkspaceAnnotations) {
+        unsubscribeWorkspaceAnnotations();
+        unsubscribeWorkspaceAnnotations = null;
+      }
+
+      const refs = getWorkspaceDocRefs();
+      if (!refs || !currentUser) {
+        updateCloudStatusUI('offline', 'Mode Lokal (Offline)');
+        return;
+      }
+
+      updateCloudStatusUI('syncing', 'Menghubungkan Ruang Kerja...');
+
+      // 1) Listener Real-Time untuk Dataset Jadwal Ruang Kerja
+      unsubscribeWorkspaceSchedule = onSnapshot(
+        refs.scheduleDoc,
+        (snap) => {
+          updateCloudStatusUI('connected', 'Cloud Aktif • Real-Time');
+          if (!snap.exists()) return;
+
+          const data = snap.data();
+          if (!data || typeof data.rowsJson !== 'string') return;
+
+          try {
+            const parsedRows = JSON.parse(data.rowsJson);
+            const normalized = normalizeRowsToSchedule(parsedRows);
+            if (!normalized.length) return;
+
+            const isDifferentLength = normalized.length !== SCHEDULE_DATA.length;
+            const isDifferentFile = String(data.fileName || '') !== String(state.datasetMeta.fileName || '');
+            const isDifferentUploadFlag = Boolean(data.isUploaded) !== Boolean(state.datasetMeta.isUploaded);
+            const remoteNewer = Number(data.updatedAtMs || 0) > cloudState.scheduleUpdatedAtMs;
+
+            if (isDifferentLength || isDifferentFile || isDifferentUploadFlag || remoteNewer) {
+              cloudState.scheduleUpdatedAtMs = Number(data.updatedAtMs || Date.now());
+              isApplyingRemoteSnapshot = true;
+              const prevSnapshot = SCHEDULE_DATA.map(d => ({ ...d }));
+              applyNewScheduleDataset(
+                normalized,
+                {
+                  isUploaded: Boolean(data.isUploaded),
+                  fileName: String(data.fileName || ''),
+                  uploadedAt: String(data.uploadedAt || '')
+                },
+                prevSnapshot,
+                true // skipCloudPush
+              );
+              isApplyingRemoteSnapshot = false;
+            }
+          } catch (_) {
+            isApplyingRemoteSnapshot = false;
+          }
+        },
+        (error) => {
+          updateCloudStatusUI('offline', 'Gangguan Sync Jadwal');
+        }
+      );
+
+      // 2) Listener Real-Time untuk Kondisi Center (Hijau/Merah) & Keterangan Manual
+      unsubscribeWorkspaceAnnotations = onSnapshot(
+        refs.annotationsCol,
+        (querySnap) => {
+          updateCloudStatusUI('connected', 'Cloud Aktif • Real-Time');
+          if (querySnap.empty) return;
+
+          // Bangun indeks cepat dari dokumen cloud
+          const remoteByNormIdName = new Map();
+          const remoteByNormId = new Map();
+          const remoteByNormName = new Map();
+
+          querySnap.forEach((docSnap) => {
+            const d = docSnap.data();
+            if (!d) return;
+            const nId = d.normId || normalizeCenterId(d.centerId);
+            const nName = d.normName || normalizeCenterName(d.centerName);
+            const cond = (d.condition === 'HIJAU' || d.condition === 'MERAH') ? d.condition : '';
+            const note = typeof d.note === 'string' ? d.note : '';
+            const entry = { cond, note };
+
+            if (nId && nName) remoteByNormIdName.set(`${nId}|||${nName}`, entry);
+            if (nId && !remoteByNormId.has(nId)) remoteByNormId.set(nId, entry);
+            if (nName && !remoteByNormName.has(nName)) remoteByNormName.set(nName, entry);
+          });
+
+          let changed = false;
+          const nextConditions = { ...state.conditions };
+          const nextNotes = { ...state.notes };
+
+          SCHEDULE_DATA.forEach((item) => {
+            const key = getRowKey(item);
+            const nId = normalizeCenterId(item.centerId);
+            const nName = normalizeCenterName(item.centerName);
+
+            let matched = null;
+            if (nId && nName && remoteByNormIdName.has(`${nId}|||${nName}`)) {
+              matched = remoteByNormIdName.get(`${nId}|||${nName}`);
+            } else if (nId && remoteByNormId.has(nId)) {
+              matched = remoteByNormId.get(nId);
+            } else if (nName && remoteByNormName.has(nName)) {
+              matched = remoteByNormName.get(nName);
+            }
+
+            if (matched) {
+              const curCond = nextConditions[key] || '';
+              if (curCond !== matched.cond) {
+                if (matched.cond) nextConditions[key] = matched.cond;
+                else delete nextConditions[key];
+                changed = true;
+              }
+
+              // Jangan timpa input keterangan jika pengguna sedang mengetik di kolom tersebut
+              const activeEl = document.activeElement;
+              const isUserTypingHere = activeEl && activeEl.dataset && activeEl.dataset.noteInput === key;
+              if (!isUserTypingHere) {
+                const curNote = nextNotes[key] || '';
+                if (curNote !== matched.note) {
+                  if (matched.note && matched.note.trim() !== '') nextNotes[key] = matched.note;
+                  else delete nextNotes[key];
+                  changed = true;
+                }
+              }
+            }
+          });
+
+          if (changed) {
+            state.conditions = nextConditions;
+            state.notes = nextNotes;
+            persistLocalOnly();
+            updateKPIs();
+            renderOfficerSummary();
+            renderScheduleContent();
+          }
+        },
+        (error) => {
+          updateCloudStatusUI('offline', 'Gangguan Sync Kondisi');
+        }
+      );
+    }
+
+    async function initFirebaseCloudSync() {
+      try {
+        if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+          updateCloudStatusUI('offline', 'Mode Lokal (Offline)');
+          return;
+        }
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        firebaseApp = initializeApp(firebaseConfig);
+        auth = getAuth(firebaseApp);
+        db = getFirestore(firebaseApp);
+        cloudState.available = true;
+
+        // Eksekusi autentikasi token kustom / anonim terlebih dahulu sesuai aturan
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        onAuthStateChanged(auth, (user) => {
+          currentUser = user || null;
+          updateAuthModalUI();
+          if (currentUser) {
+            attachWorkspaceListeners();
+          } else {
+            updateCloudStatusUI('offline', 'Menunggu Sesi Akun');
+          }
+        });
+      } catch (err) {
+        updateCloudStatusUI('offline', 'Mode Lokal (Offline)');
+      }
+    }
+
+    // =========================================================================
+    // 5. AKSI MODAL SINKRONISASI CLOUD & LOGIN AKUN
+    // =========================================================================
+    function openCloudSyncModal() {
+      updateAuthModalUI();
+      const modal = document.getElementById('cloudSyncModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      refreshIconsSafe();
+    }
+
+    function closeCloudSyncModal() {
+      const modal = document.getElementById('cloudSyncModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function selectWorkspaceMode(mode) {
+      cloudState.workspaceMode = mode;
+      saveWorkspacePreferences();
+      updateAuthModalUI();
+      if (currentUser) {
+        attachWorkspaceListeners();
+      }
+      const label = mode === 'personal'
+        ? 'Ruang Kerja Pribadi (Per Akun)'
+        : 'Ruang Kerja Bersama Cabang WADO';
+      showToast(`Beralih ke ${label}.`);
+    }
+
+    function applyCustomWorkspaceCode() {
+      const input = document.getElementById('customWorkspaceCodeInput');
+      const code = sanitizeWorkspaceCode(input ? input.value : '');
+      cloudState.workspaceMode = 'custom';
+      cloudState.customCode = code;
+      if (input) input.value = code;
+      saveWorkspacePreferences();
+      updateAuthModalUI();
+      if (currentUser) {
+        attachWorkspaceListeners();
+      }
+      showToast(`Terhubung ke ruang kerja tim: "${code}".`);
+    }
+
+    async function signInWithGoogleAccount() {
+      if (!auth) {
+        showToast('Layanan akun cloud sedang berjalan dalam mode lokal.');
+        return;
+      }
+      try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+        showToast('Berhasil masuk dengan Akun Google.');
+      } catch (err) {
+        showToast(`Login Google dibatalkan atau gagal: ${err?.message || 'Coba lagi'}`);
+      }
+    }
+
+    async function signInWithEmailAccount(isRegister) {
+      if (!auth) {
+        showToast('Layanan akun cloud sedang berjalan dalam mode lokal.');
+        return;
+      }
+      const email = String(document.getElementById('authEmailInput')?.value || '').trim();
+      const pass = String(document.getElementById('authPasswordInput')?.value || '').trim();
+      if (!email || pass.length < 6) {
+        showToast('Masukkan email valid dan kata sandi minimal 6 karakter.');
+        return;
+      }
+      try {
+        if (isRegister) {
+          await createUserWithEmailAndPassword(auth, email, pass);
+          showToast(`Akun baru berhasil didaftarkan (${email}).`);
+        } else {
+          await signInWithEmailAndPassword(auth, email, pass);
+          showToast(`Berhasil masuk sebagai ${email}.`);
+        }
+      } catch (err) {
+        showToast(`Autentikasi email gagal: ${err?.message || 'Periksa email/sandi'}`);
+      }
+    }
+
+    async function signOutToGuestSession() {
+      if (!auth) return;
+      try {
+        await signOut(auth);
+        await signInAnonymously(auth);
+        if (cloudState.workspaceMode === 'personal') {
+          cloudState.workspaceMode = 'shared';
+          saveWorkspacePreferences();
+        }
+        showToast('Keluar akun; kembali ke sesi perangkat Cabang WADO.');
+      } catch (_) {}
+    }
+
+    async function forcePushLocalToCloud() {
+      if (!currentUser || !db) {
+        showToast('Cloud belum terhubung; data tetap aman di penyimpanan lokal.');
+        return;
+      }
+      await pushScheduleToCloud(SCHEDULE_DATA, state.datasetMeta);
+      await pushAllAnnotationsBatchToCloud();
+      showToast('Seluruh jadwal, kondisi, dan catatan telah disinkronkan ke Cloud.');
+    }
+
+    function copyCurrentWorkspaceLinkOrId() {
+      const textToCopy = cloudState.workspaceMode === 'personal'
+        ? (currentUser?.uid || '')
+        : getActiveWorkspaceId();
+      if (!textToCopy) return;
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = textToCopy;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(`Kode ruang disalin: ${textToCopy}`);
+      } catch (_) {
+        showToast(`Kode ruang: ${textToCopy}`);
+      }
+    }
+
+    // =========================================================================
+    // 6. APPLY DATASET JADWAL BARU & PERSISTENSI LOKAL + CLOUD
+    // =========================================================================
+    function applyNewScheduleDataset(newScheduleArray, metaInfo, previousRecordsSnapshot, skipCloudPush = false) {
+      const sourceRecords = Array.isArray(previousRecordsSnapshot) && previousRecordsSnapshot.length
+        ? previousRecordsSnapshot
+        : SCHEDULE_DATA;
+
+      const prevConditions = { ...state.conditions };
+      const prevNotes = { ...state.notes };
+
+      const nextConditions = {};
+      const nextNotes = {};
+      let matchedCount = 0;
+
+      newScheduleArray.forEach((item) => {
+        const matched = matchAnnotationForNewItem(item, sourceRecords, prevConditions, prevNotes);
+        const newKey = getRowKey(item);
+        let usedAny = false;
+
+        if (matched.cond === 'HIJAU' || matched.cond === 'MERAH') {
+          nextConditions[newKey] = matched.cond;
+          usedAny = true;
+        }
+        if (typeof matched.note === 'string' && matched.note.trim() !== '') {
+          nextNotes[newKey] = matched.note;
+          usedAny = true;
+        }
+        if (usedAny) matchedCount++;
+      });
+
+      SCHEDULE_DATA = newScheduleArray;
+      state.conditions = nextConditions;
+      state.notes = nextNotes;
+      state.datasetMeta = {
+        isUploaded: Boolean(metaInfo && metaInfo.isUploaded),
+        fileName: (metaInfo && metaInfo.fileName) || '',
+        uploadedAt: (metaInfo && metaInfo.uploadedAt) || ''
+      };
+
+      persistLocalOnly();
+      if (!skipCloudPush) {
+        pushScheduleToCloud(SCHEDULE_DATA, state.datasetMeta);
+        pushAllAnnotationsBatchToCloud();
+      }
+
+      refreshHeaderAndDayPills();
+      resetFilterDropdownsAndApply();
+      renderOfficerSummary();
+      if (state.activeTab === 'wilayah') {
+        wilayahCharts.kecamatan = null;
+        wilayahCharts.harian = null;
+        renderWilayahSummary();
+      }
+      refreshIconsSafe();
+      return matchedCount;
+    }
+
+    function getCenterCellStyle(cond) {
+      if (cond === 'HIJAU') {
+        return {
+          cellClass: 'bg-emerald-100 text-emerald-950 border-x border-emerald-200/80',
+          idBadgeClass: 'bg-emerald-200/80 text-emerald-950 border-emerald-300',
+          boxClass: 'bg-emerald-100 border-emerald-300 text-emerald-950',
+          label: 'Hijau'
+        };
+      }
+      if (cond === 'MERAH') {
+        return {
+          cellClass: 'bg-rose-100 text-rose-950 border-x border-rose-200/80',
+          idBadgeClass: 'bg-rose-200/80 text-rose-950 border-rose-300',
+          boxClass: 'bg-rose-100 border-rose-300 text-rose-950',
+          label: 'Merah'
+        };
+      }
+      return {
+        cellClass: 'bg-white text-slate-800',
+        idBadgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+        boxClass: 'bg-slate-50 border-slate-200 text-slate-900',
+        label: 'Belum Diatur'
+      };
+    }
+
+    function getConditionSelectClass(cond) {
+      if (cond === 'HIJAU') return 'bg-emerald-600 text-white border-emerald-700 font-bold';
+      if (cond === 'MERAH') return 'bg-rose-600 text-white border-rose-700 font-bold';
+      return 'bg-white text-slate-700 border-slate-300 font-medium';
+    }
+
+    function getDayBadgeClass(hari) {
+      switch (hari) {
+        case 'SENIN': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        case 'SELASA': return 'bg-teal-100 text-teal-800 border-teal-200';
+        case 'RABU': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
+        case 'KAMIS': return 'bg-amber-100 text-amber-800 border-amber-200';
+        case 'JUMAT': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+        default: return 'bg-slate-100 text-slate-800 border-slate-200';
+      }
+    }
+
+    function loadPersistedData() {
+      try {
+        const rawSchedule = window.localStorage.getItem(STORAGE_KEY_SCHEDULE);
+        if (rawSchedule) {
+          const parsedSchedule = JSON.parse(rawSchedule);
+          if (parsedSchedule && Array.isArray(parsedSchedule.rows) && parsedSchedule.rows.length > 0) {
+            const normalized = normalizeRowsToSchedule(parsedSchedule.rows);
+            if (normalized.length > 0) {
+              SCHEDULE_DATA = normalized;
+              state.datasetMeta = {
+                isUploaded: true,
+                fileName: String(parsedSchedule.fileName || 'CenterMeeting_Terbaru'),
+                uploadedAt: String(parsedSchedule.uploadedAt || '')
+              };
+            }
+          }
+        }
+      } catch (_) {
+        if (memoryFallback.uploadedSchedule && memoryFallback.uploadedSchedule.rows?.length) {
+          SCHEDULE_DATA = normalizeRowsToSchedule(memoryFallback.uploadedSchedule.rows);
+          state.datasetMeta = { ...memoryFallback.uploadedSchedule.meta };
+        }
+      }
+
+      try {
+        const rawCond = window.localStorage.getItem(STORAGE_KEY_CONDITIONS);
+        if (rawCond) {
+          const p = JSON.parse(rawCond);
+          const cleanCond = {};
+          if (p && typeof p === 'object') {
+            Object.keys(p).forEach((k) => {
+              if (p[k] === 'HIJAU' || p[k] === 'MERAH') cleanCond[k] = p[k];
+            });
+          }
+          state.conditions = cleanCond;
+        }
+      } catch (_) {
+        state.conditions = { ...memoryFallback.conditions };
+      }
+
+      try {
+        const rawNotes = window.localStorage.getItem(STORAGE_KEY_NOTES);
+        if (rawNotes) {
+          const p = JSON.parse(rawNotes);
+          const cleanNotes = {};
+          if (p && typeof p === 'object') {
+            Object.keys(p).forEach((k) => {
+              if (typeof p[k] === 'string' && p[k].trim() !== '') cleanNotes[k] = p[k];
+            });
+          }
+          state.notes = cleanNotes;
+        }
+      } catch (_) {
+        state.notes = { ...memoryFallback.notes };
+      }
+
+      updateSavedCounterBadge();
+    }
+
+    function persistLocalOnly() {
+      const cleanCond = {};
+      Object.keys(state.conditions).forEach((k) => {
+        if (state.conditions[k] === 'HIJAU' || state.conditions[k] === 'MERAH') {
+          cleanCond[k] = state.conditions[k];
+          memoryFallback.conditions[k] = state.conditions[k];
+        } else {
+          delete memoryFallback.conditions[k];
+        }
+      });
+      state.conditions = cleanCond;
+
+      const cleanNotes = {};
+      Object.keys(state.notes).forEach((k) => {
+        if (typeof state.notes[k] === 'string' && state.notes[k].trim() !== '') {
+          cleanNotes[k] = state.notes[k];
+          memoryFallback.notes[k] = state.notes[k];
+        } else {
+          delete memoryFallback.notes[k];
+        }
+      });
+      state.notes = cleanNotes;
+
+      try {
+        window.localStorage.setItem(STORAGE_KEY_CONDITIONS, JSON.stringify(state.conditions));
+        window.localStorage.setItem(STORAGE_KEY_NOTES, JSON.stringify(state.notes));
+        if (state.datasetMeta.isUploaded) {
+          const compactRows = SCHEDULE_DATA.map((d) => [
+            d.hari, d.officer, d.centerId, d.centerName, d.jam,
+            d.groups, d.members, d.clients, d.desa, d.kecamatan, d.kabupaten
+          ]);
+          const payload = {
+            fileName: state.datasetMeta.fileName,
+            uploadedAt: state.datasetMeta.uploadedAt,
+            rows: compactRows
+          };
+          memoryFallback.uploadedSchedule = { rows: compactRows, meta: { ...state.datasetMeta } };
+          window.localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(payload));
+        } else {
+          memoryFallback.uploadedSchedule = null;
+          window.localStorage.removeItem(STORAGE_KEY_SCHEDULE);
+        }
+      } catch (_) {}
+
+      updateSavedCounterBadge();
+    }
+
+    function updateSavedCounterBadge() {
+      const totalSaved = Object.keys(state.conditions).length + Object.keys(state.notes).length;
+      const el = document.getElementById('savedStateCountBadge');
+      if (el) el.textContent = fmtNum(totalSaved);
+    }
+
+    // =========================================================================
+    // 7. PARSER FILE EXCEL (.XLSX / .XLS / .CSV) SHEETJS
+    // =========================================================================
+    function triggerCenterMeetingUpload() {
+      const input = document.getElementById('centerMeetingFileInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function parseCsvFallback(text) {
+      const lines = String(text || '').split(/\r?\n/).filter(l => l.trim() !== '');
+      if (!lines.length) return [];
+      const delim = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
+      return lines.map((line) => {
+        const result = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (ch === delim && !inQuotes) {
+            result.push(cur.trim());
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        result.push(cur.trim());
+        return result;
+      });
+    }
+
+    function expandMergedCells(ws, rawRows) {
+      const rows = (Array.isArray(rawRows) ? rawRows : []).map(r => (Array.isArray(r) ? [...r] : []));
+      const merges = ws && Array.isArray(ws['!merges']) ? ws['!merges'] : [];
+
+      merges.forEach((range) => {
+        if (!range || !range.s || !range.e) return;
+        const r1 = range.s.r;
+        const c1 = range.s.c;
+        const r2 = range.e.r;
+        const c2 = range.e.c;
+        const topLeftVal = rows[r1] ? rows[r1][c1] : null;
+
+        for (let r = r1; r <= r2; r++) {
+          if (!rows[r]) rows[r] = [];
+          for (let c = c1; c <= c2; c++) {
+            if (r === r1 && c === c1) continue;
+            if (rows[r][c] === null || rows[r][c] === undefined || String(rows[r][c]).trim() === '') {
+              rows[r][c] = topLeftVal;
+            }
+          }
+        }
+      });
+
+      return rows;
+    }
+
+    function detectHeaderMapping(rows) {
+      const scanLimit = Math.min(25, rows.length);
+      const colMap = {
+        headerRowIndex: -1,
+        day: -1,
+        officer: -1,
+        centerId: -1,
+        centerName: -1,
+        time: -1,
+        groups: -1,
+        members: -1,
+        clients: -1,
+        desa: -1,
+        kecamatan: -1,
+        kabupaten: -1
+      };
+
+      const headerMatchers = [
+        { key: 'day', patterns: [/^meeting\s*day$/i, /^hari$/i, /^day$/i] },
+        { key: 'officer', patterns: [/^officer\s*name$/i, /^officer$/i, /^petugas$/i, /^nama\s*officer$/i] },
+        { key: 'centerId', patterns: [/^center\s*id$/i, /^id\s*center$/i, /^ctr\s*id$/i, /^kode\s*center$/i] },
+        { key: 'centerName', patterns: [/^center\s*name$/i, /^nama\s*center$/i, /^center$/i] },
+        { key: 'time', patterns: [/^time$/i, /^jam$/i, /^waktu$/i] },
+        { key: 'groups', patterns: [/^total\s*group$/i, /^group$/i, /^jumlah\s*group$/i] },
+        { key: 'members', patterns: [/^total\s*member$/i, /^member$/i, /^jumlah\s*member$/i] },
+        { key: 'clients', patterns: [/^jumlah\s*client$/i, /^total\s*client$/i, /^client$/i] },
+        { key: 'desa', patterns: [/^desa\s*\/?\s*kelurahan$/i, /^desa$/i, /^kelurahan$/i] },
+        { key: 'kecamatan', patterns: [/^kecamatan$/i, /^kec\.?$/i] },
+        { key: 'kabupaten', patterns: [/^kabupaten$/i, /^kab\.?$/i, /^kota$/i] }
+      ];
+
+      let bestScore = 0;
+      for (let r = 0; r < scanLimit; r++) {
+        const row = rows[r] || [];
+        const currentMap = {};
+        let score = 0;
+
+        row.forEach((cell, cIdx) => {
+          const text = String(cell ?? '').replace(/\s+/g, ' ').trim();
+          if (!text) return;
+          for (const rule of headerMatchers) {
+            if (currentMap[rule.key] === undefined && rule.patterns.some(rx => rx.test(text))) {
+              currentMap[rule.key] = cIdx;
+              score++;
+              break;
+            }
+          }
+        });
+
+        if (score > bestScore && (currentMap.centerId !== undefined || currentMap.centerName !== undefined || currentMap.time !== undefined)) {
+          bestScore = score;
+          Object.assign(colMap, currentMap);
+          colMap.headerRowIndex = r;
+        }
+      }
+      return colMap;
+    }
+
+    function isReportMetadataOrTotalRow(cells, dayVal, officerVal, centerIdRaw, centerNameRaw) {
+      const joined = cells.map(c => String(c ?? '').trim()).filter(Boolean).join(' ').toLowerCase();
+      if (!joined) return true;
+
+      if (
+        joined.includes('mdis system') ||
+        joined.includes('centermeetingschedulerpt') ||
+        joined.includes('center meeting schedule') ||
+        /^wado\s*,?\s*\d{1,2}\/\d{1,2}\/\d{4}/i.test(joined) ||
+        /^page\s+\d+/i.test(joined)
+      ) {
+        return true;
+      }
+
+      if (dayVal === 'TOTAL' || /^total\b/i.test(officerVal) || /^grand\s*total\b/i.test(joined) || /^sub\s*total\b/i.test(joined)) {
+        return true;
+      }
+
+      const idLower = String(centerIdRaw ?? '').trim().toLowerCase();
+      const nameLower = String(centerNameRaw ?? '').trim().toLowerCase();
+      if (
+        idLower === 'total' ||
+        nameLower === 'total' ||
+        idLower === 'center id' ||
+        nameLower === 'center name' ||
+        /^total\s*center/i.test(idLower) ||
+        /^total\s*center/i.test(nameLower)
+      ) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function mapSheetRowsToScheduleArray(matrix) {
+      if (!Array.isArray(matrix) || matrix.length === 0) return [];
+
+      const colMap = detectHeaderMapping(matrix);
+      const startRow = colMap.headerRowIndex >= 0 ? colMap.headerRowIndex + 1 : 0;
+
+      const parsedRows = [];
+      let currentDay = '';
+      let currentOfficer = '';
+
+      for (let r = startRow; r < matrix.length; r++) {
+        const rawRow = Array.isArray(matrix[r]) ? matrix[r] : [];
+        const hasAnyValue = rawRow.some(v => v !== null && v !== undefined && String(v).trim() !== '');
+        if (!hasAnyValue) continue;
+
+        const rawDay = colMap.day >= 0 ? rawRow[colMap.day] : rawRow[0];
+        const rawOfficer = colMap.officer >= 0 ? rawRow[colMap.officer] : rawRow[1];
+        const rawCenterId = colMap.centerId >= 0 ? rawRow[colMap.centerId] : rawRow[2];
+        const rawCenterName = colMap.centerName >= 0 ? rawRow[colMap.centerName] : rawRow[3];
+        const rawTime = colMap.time >= 0 ? rawRow[colMap.time] : rawRow[4];
+        const rawGroups = colMap.groups >= 0 ? rawRow[colMap.groups] : rawRow[5];
+        const rawMembers = colMap.members >= 0 ? rawRow[colMap.members] : rawRow[6];
+        const rawClients = colMap.clients >= 0 ? rawRow[colMap.clients] : rawRow[7];
+        const rawDesa = colMap.desa >= 0 ? rawRow[colMap.desa] : rawRow[8];
+        const rawKecamatan = colMap.kecamatan >= 0 ? rawRow[colMap.kecamatan] : rawRow[9];
+        const rawKabupaten = colMap.kabupaten >= 0 ? rawRow[colMap.kabupaten] : rawRow[10];
+
+        const normalizedDayToken = normalizeDayValue(rawDay);
+        if (normalizedDayToken === 'TOTAL') break;
+        if (normalizedDayToken) currentDay = normalizedDayToken;
+
+        const officerCleaned = cleanOfficerName(rawOfficer);
+        if (/^total\b/i.test(officerCleaned)) continue;
+        if (officerCleaned) currentOfficer = officerCleaned;
+
+        if (isReportMetadataOrTotalRow(rawRow, normalizedDayToken, officerCleaned, rawCenterId, rawCenterName)) {
+          continue;
+        }
+
+        const centerIdFormatted = formatCenterIdDisplay(rawCenterId);
+        const centerNameStr = String(rawCenterName ?? '').split(/\r?\n/)[0].trim();
+
+        if (!centerIdFormatted || !centerNameStr) continue;
+
+        const timeFormatted = normalizeTimeValue(rawTime) || '09:00';
+        const groupsNum = parseSafeInt(rawGroups);
+        const membersNum = parseSafeInt(rawMembers);
+        const clientsNum = (rawClients !== null && rawClients !== undefined && String(rawClients).trim() !== '')
+          ? parseSafeInt(rawClients)
+          : membersNum;
+
+        const desaStr = String(rawDesa ?? '').split(/\r?\n/)[0].trim();
+        const kecamatanStr = String(rawKecamatan ?? '').split(/\r?\n/)[0].trim().toUpperCase();
+        const kabupatenStr = String(rawKabupaten ?? '').split(/\r?\n/)[0].trim() || 'Sumedang, Kab.';
+
+        parsedRows.push([
+          currentDay || 'SENIN',
+          currentOfficer || 'OFFICER',
+          centerIdFormatted,
+          centerNameStr,
+          timeFormatted,
+          groupsNum,
+          membersNum,
+          clientsNum,
+          desaStr,
+          kecamatanStr,
+          kabupatenStr
+        ]);
+      }
+
+      return normalizeRowsToSchedule(parsedRows);
+    }
+
+    function selectCenterMeetingWorksheet(workbook) {
+      if (!workbook || !workbook.SheetNames || !workbook.SheetNames.length) {
+        throw new Error('Workbook tidak memiliki sheet yang dapat dibaca.');
+      }
+      const targetSheetName = workbook.SheetNames.find(
+        name => String(name).trim().toLowerCase() === 'centermeeting'
+      );
+      const chosenName = targetSheetName || workbook.SheetNames[0];
+      return {
+        sheetName: chosenName,
+        worksheet: workbook.Sheets[chosenName]
+      };
+    }
+
+    function handleCenterMeetingFileUpload(event) {
+      const file = event && event.target && event.target.files ? event.target.files[0] : null;
+      if (!file) return;
+
+      const previousRecordsSnapshot = SCHEDULE_DATA.map(d => ({ ...d }));
+      const fileNameLower = file.name.toLowerCase();
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const buffer = e.target.result;
+          let rowsWithMerges = [];
+          let activeSheetLabel = '';
+
+          if (window.XLSX && typeof window.XLSX.read === 'function') {
+            const dataBytes = new Uint8Array(buffer);
+            const workbook = window.XLSX.read(dataBytes, { type: 'array', cellDates: false });
+            const { sheetName, worksheet } = selectCenterMeetingWorksheet(workbook);
+            activeSheetLabel = sheetName;
+            const rawRows = window.XLSX.utils.sheet_to_json(worksheet, {
+              header: 1,
+              raw: true,
+              defval: null
+            });
+            rowsWithMerges = expandMergedCells(worksheet, rawRows);
+          } else if (fileNameLower.endsWith('.csv')) {
+            const decoder = new TextDecoder('utf-8');
+            rowsWithMerges = parseCsvFallback(decoder.decode(buffer));
+            activeSheetLabel = 'CSV';
+          } else {
+            throw new Error('Pustaka pembaca Excel (SheetJS) tidak tersedia. Gunakan file .csv atau periksa koneksi.');
+          }
+
+          const mappedSchedule = mapSheetRowsToScheduleArray(rowsWithMerges);
+          if (!mappedSchedule.length) {
+            const errMsg = `File "${file.name}" (sheet: ${activeSheetLabel || '-'}) tidak memuat baris data Center Meeting yang valid.`;
+            showRuntimeErrorBanner(errMsg);
+            showToast(errMsg);
+            return;
+          }
+
+          dismissErrorBanner();
+
+          const nowStr = new Date().toLocaleString('id-ID', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          });
+
+          const matchedCount = applyNewScheduleDataset(
+            mappedSchedule,
+            { isUploaded: true, fileName: `${file.name} [${activeSheetLabel}]`, uploadedAt: nowStr },
+            previousRecordsSnapshot,
+            false
+          );
+
+          const totalConds = Object.keys(state.conditions).length;
+          const totalNotes = Object.keys(state.notes).length;
+
+          showToast(
+            `Impor & Sync Cloud sukses: ${mappedSchedule.length} center dari "${file.name}" (${matchedCount} center terjaga • ${totalConds} kondisi, ${totalNotes} catatan).`
+          );
+        } catch (err) {
+          const detailMsg = `Gagal membaca file "${file.name}": ${err && err.message ? err.message : 'Format tidak valid'}.`;
+          showRuntimeErrorBanner(detailMsg);
+          showToast(detailMsg);
+        }
+      };
+
+      reader.onerror = function () {
+        const readErr = `Tidak dapat membaca file "${file.name}" dari perangkat.`;
+        showRuntimeErrorBanner(readErr);
+        showToast(readErr);
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    // =========================================================================
+    // 8. MODAL RESET DATA
+    // =========================================================================
+    function openResetOptionsModal() {
+      const modal = document.getElementById('resetModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      refreshIconsSafe();
+    }
+
+    function closeResetOptionsModal() {
+      const modal = document.getElementById('resetModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function clearAnnotationsOnly() {
+      state.conditions = {};
+      state.notes = {};
+      memoryFallback.conditions = {};
+      memoryFallback.notes = {};
+      persistLocalOnly();
+      closeResetOptionsModal();
+      updateKPIs();
+      renderOfficerSummary();
+      applyFilters();
+      await clearAllCloudAnnotations();
+      showToast('Seluruh pilihan Kondisi Center & Keterangan telah dihapus (Lokal & Cloud).');
+    }
+
+    function restoreDefaultScheduleDataset() {
+      const previousRecordsSnapshot = SCHEDULE_DATA.map(d => ({ ...d }));
+      const defaultSchedule = normalizeRowsToSchedule(DEFAULT_SCHEDULE_ROWS);
+      const matchedCount = applyNewScheduleDataset(
+        defaultSchedule,
+        { isUploaded: false, fileName: '', uploadedAt: '' },
+        previousRecordsSnapshot,
+        false
+      );
+      closeResetOptionsModal();
+      showToast(`Kembali ke dataset bawaan (356 Center) & tersinkronisasi ke Cloud. ${matchedCount} center tetap mempertahankan kondisi.`);
+    }
+
+    // =========================================================================
+    // 9. FILTER, PENCARIAN, PENGURUTAN & INTERAKSI BARIS
+    // =========================================================================
+    function refreshHeaderAndDayPills() {
+      const badgeEl = document.getElementById('datasetSourceBadge');
+      if (state.datasetMeta.isUploaded) {
+        badgeEl.innerHTML = `<i data-lucide="file-check-2" class="w-3.5 h-3.5 text-amber-300"></i> File: <strong>${escapeHtml(state.datasetMeta.fileName)}</strong> (${escapeHtml(state.datasetMeta.uploadedAt)})`;
+      } else {
+        badgeEl.innerHTML = `<i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> WADO, 11/23/2026 7:52:33 AM &bull; MDis System CenterMeetingScheduleRpt`;
+      }
+
+      const dayOrder = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
+      const extraDays = [...new Set(SCHEDULE_DATA.map(d => d.hari).filter(h => h && !dayOrder.includes(h)))];
+      const allDays = [...dayOrder, ...extraDays];
+
+      const pillsContainer = document.getElementById('dayFilterPills');
+      const totalCount = SCHEDULE_DATA.length;
+      let pillsHtml = `
+        <button type="button" data-day="ALL" onclick="setDayFilter('ALL')" class="day-pill px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap ${state.day === 'ALL' ? 'bg-emerald-700 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'} transition-all cursor-pointer">
+          Semua Hari (${fmtNum(totalCount)})
+        </button>
+      `;
+
+      allDays.forEach((d) => {
+        const cnt = SCHEDULE_DATA.filter(x => x.hari === d).length;
+        const active = state.day === d;
+        pillsHtml += `
+          <button type="button" data-day="${escapeHtml(d)}" onclick="setDayFilter('${escapeHtml(d)}')" class="day-pill px-3.5 py-2 rounded-xl text-xs ${active ? 'font-bold bg-emerald-700 text-white shadow-sm' : 'font-semibold bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'} whitespace-nowrap transition-all cursor-pointer">
+            ${escapeHtml(d)} (${fmtNum(cnt)})
+          </button>
+        `;
+      });
+      pillsContainer.innerHTML = pillsHtml;
+
+      const tGrp = SCHEDULE_DATA.reduce((s, d) => s + d.groups, 0);
+      const tMbr = SCHEDULE_DATA.reduce((s, d) => s + d.members, 0);
+      const tCli = SCHEDULE_DATA.reduce((s, d) => s + d.clients, 0);
+      document.getElementById('footerRightText').innerHTML =
+        `Total Valid: <span class="font-semibold text-emerald-700">${fmtNum(totalCount)} Center</span> | ` +
+        `<span class="font-semibold text-emerald-700">${fmtNum(tGrp)} Group</span> | ` +
+        `<span class="font-semibold text-emerald-700">${fmtNum(tMbr)} Member</span> | ` +
+        `<span class="font-semibold text-emerald-700">${fmtNum(tCli)} Client</span>`;
+    }
+
+    function initFilterOptions() {
+      const officers = [...new Set(SCHEDULE_DATA.map(d => d.officer))].sort((a, b) => a.localeCompare(b));
+      const officerSelect = document.getElementById('officerFilter');
+      officerSelect.innerHTML = `<option value="ALL">Semua Officer (${officers.length} Petugas)</option>`;
+      officers.forEach((off) => {
+        const count = SCHEDULE_DATA.filter(d => d.officer === off).length;
+        const opt = document.createElement('option');
+        opt.value = off;
+        opt.textContent = `${off} (${count} Ctr)`;
+        officerSelect.appendChild(opt);
+      });
+
+      const kecamatans = [...new Set(SCHEDULE_DATA.map(d => d.kecamatan).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      const kecSelect = document.getElementById('kecamatanFilter');
+      kecSelect.innerHTML = `<option value="ALL">Semua Kecamatan (${kecamatans.length})</option>`;
+      kecamatans.forEach((kec) => {
+        const count = SCHEDULE_DATA.filter(d => d.kecamatan === kec).length;
+        const opt = document.createElement('option');
+        opt.value = kec;
+        opt.textContent = `Kec. ${kec} (${count})`;
+        kecSelect.appendChild(opt);
+      });
+    }
+
+    function resetFilterDropdownsAndApply() {
+      state.day = 'ALL';
+      state.officer = 'ALL';
+      state.kecamatan = 'ALL';
+      state.condition = 'ALL';
+      state.search = '';
+      state.sortBy = 'default';
+
+      document.getElementById('searchInput').value = '';
+      document.getElementById('conditionFilter').value = 'ALL';
+      document.getElementById('sortSelect').value = 'default';
+
+      initFilterOptions();
+      refreshHeaderAndDayPills();
+      applyFilters();
+    }
+
+    function setDayFilter(day) {
+      state.day = day;
+      document.querySelectorAll('.day-pill').forEach((btn) => {
+        if (btn.dataset.day === day) {
+          btn.className = 'day-pill px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap bg-emerald-700 text-white shadow-sm transition-all cursor-pointer';
+        } else {
+          btn.className = 'day-pill px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-all cursor-pointer';
+        }
+      });
+      applyFilters();
+    }
+
+    function setScheduleViewMode(mode) {
+      state.viewMode = mode;
+      const flatBtn = document.getElementById('viewMode-flat');
+      const groupedBtn = document.getElementById('viewMode-grouped');
+
+      if (mode === 'flat') {
+        flatBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-emerald-700 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer';
+        groupedBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5 cursor-pointer';
+      } else {
+        groupedBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-emerald-700 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer';
+        flatBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5 cursor-pointer';
+      }
+      renderScheduleContent();
+    }
+
+    function setColumnMode(mode) {
+      state.columnMode = mode;
+      const fullBtn = document.getElementById('colMode-full');
+      const compactBtn = document.getElementById('colMode-compact');
+
+      if (mode === 'full') {
+        fullBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-sm transition-all cursor-pointer';
+        compactBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all cursor-pointer';
+      } else {
+        compactBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-sm transition-all cursor-pointer';
+        fullBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all cursor-pointer';
+      }
+      renderScheduleContent();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('searchInput');
+      if (input) input.value = '';
+      applyFilters();
+    }
+
+    function resetAllFilters() {
+      state.day = 'ALL';
+      state.officer = 'ALL';
+      state.kecamatan = 'ALL';
+      state.condition = 'ALL';
+      state.search = '';
+      state.sortBy = 'default';
+
+      document.getElementById('searchInput').value = '';
+      document.getElementById('officerFilter').value = 'ALL';
+      document.getElementById('kecamatanFilter').value = 'ALL';
+      document.getElementById('conditionFilter').value = 'ALL';
+      document.getElementById('sortSelect').value = 'default';
+
+      setDayFilter('ALL');
+      showToast('Semua filter direset.');
+    }
+
+    function handleConditionChange(itemIndex, rawVal) {
+      try {
+        const item = SCHEDULE_DATA[itemIndex];
+        if (!item) return;
+        const key = getRowKey(item);
+        const val = (rawVal === 'HIJAU' || rawVal === 'MERAH') ? rawVal : '';
+
+        if (val) {
+          state.conditions[key] = val;
+        } else {
+          delete state.conditions[key];
+        }
+        persistLocalOnly();
+        pushSingleAnnotationToCloud(item);
+
+        const styleInfo = getCenterCellStyle(val);
+        const selectStyle = getConditionSelectClass(val);
+
+        document.querySelectorAll(`[data-center-cell="${CSS.escape(key)}"]`).forEach((cell) => {
+          cell.className = `py-3 px-3 font-medium transition-colors ${styleInfo.cellClass}`;
+        });
+
+        document.querySelectorAll(`[data-center-id-badge="${CSS.escape(key)}"]`).forEach((badge) => {
+          badge.className = `inline-flex items-center px-2 py-0.5 rounded-md font-mono text-xs font-semibold border transition-colors ${styleInfo.idBadgeClass}`;
+        });
+
+        document.querySelectorAll(`[data-condition-select="${CSS.escape(key)}"]`).forEach((sel) => {
+          if (sel.value !== val) sel.value = val;
+          sel.className = `condition-select px-2.5 py-1.5 rounded-lg border text-xs transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${selectStyle}`;
+        });
+
+        const modalBox = document.getElementById('modalCenterHighlightBox');
+        if (modalBox && modalBox.dataset.activeKey === key) {
+          modalBox.className = `p-3.5 rounded-xl border transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${styleInfo.boxClass}`;
+          const modalSel = document.getElementById('modalConditionSelect');
+          if (modalSel && modalSel.value !== val) modalSel.value = val;
+        }
+
+        updateKPIs();
+        renderOfficerSummary();
+
+        if (state.condition !== 'ALL') {
+          applyFilters();
+        }
+      } catch (_) {
+        showRuntimeErrorBanner('Gagal memperbarui warna kondisi center.');
+      }
+    }
+
+    function handleNoteChange(itemIndex, value) {
+      const item = SCHEDULE_DATA[itemIndex];
+      if (!item) return;
+      const key = getRowKey(item);
+      if (String(value).trim() === '') {
+        delete state.notes[key];
+      } else {
+        state.notes[key] = String(value);
+      }
+      persistLocalOnly();
+      document.querySelectorAll(`[data-note-input="${CSS.escape(key)}"]`).forEach((el) => {
+        if (el.value !== value) el.value = value;
+      });
+
+      // Debounce sinkronisasi catatan manual ke Cloud agar ringan saat mengetik
+      if (noteSyncTimers[key]) {
+        clearTimeout(noteSyncTimers[key]);
+      }
+      noteSyncTimers[key] = setTimeout(() => {
+        pushSingleAnnotationToCloud(item);
+        delete noteSyncTimers[key];
+      }, 650);
+    }
+
+    function applyFilters() {
+      try {
+        state.officer = document.getElementById('officerFilter').value;
+        state.kecamatan = document.getElementById('kecamatanFilter').value;
+        state.condition = document.getElementById('conditionFilter').value;
+        state.search = document.getElementById('searchInput').value.trim().toLowerCase();
+        state.sortBy = document.getElementById('sortSelect').value;
+
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (state.search.length > 0) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+
+        const filtered = SCHEDULE_DATA.filter((item) => {
+          if (state.day !== 'ALL' && item.hari !== state.day) return false;
+          if (state.officer !== 'ALL' && item.officer !== state.officer) return false;
+          if (state.kecamatan !== 'ALL' && item.kecamatan !== state.kecamatan) return false;
+
+          const key = getRowKey(item);
+          const cond = state.conditions[key] || '';
+          if (state.condition === 'HIJAU' && cond !== 'HIJAU') return false;
+          if (state.condition === 'MERAH' && cond !== 'MERAH') return false;
+          if (state.condition === 'UNSET' && cond !== '') return false;
+
+          if (state.search) {
+            const noteText = state.notes[key] || '';
+            const condLabel = cond === 'HIJAU' ? 'hijau' : cond === 'MERAH' ? 'merah' : '';
+            const hay = `${item.centerId} ${item.centerName} ${item.officer} ${item.desa} ${item.kecamatan} ${item.kabupaten} ${item.hari} ${item.jam} ${noteText} ${condLabel}`.toLowerCase();
+            if (!hay.includes(state.search)) return false;
+          }
+          return true;
+        });
+
+        if (state.sortBy === 'time_asc') {
+          filtered.sort((a, b) => a.jam.localeCompare(b.jam) || a.index - b.index);
+        } else if (state.sortBy === 'id_asc') {
+          filtered.sort((a, b) => a.centerId.localeCompare(b.centerId) || a.index - b.index);
+        } else if (state.sortBy === 'member_desc') {
+          filtered.sort((a, b) => b.members - a.members || a.index - b.index);
+        } else if (state.sortBy === 'desa_asc') {
+          filtered.sort((a, b) => a.desa.localeCompare(b.desa) || a.jam.localeCompare(b.jam));
+        } else {
+          filtered.sort((a, b) => a.index - b.index);
+        }
+
+        state.filteredData = filtered;
+        updateKPIs();
+        renderScheduleContent();
+      } catch (_) {
+        state.filteredData = [...SCHEDULE_DATA];
+        updateKPIs();
+        renderScheduleContent();
+        showRuntimeErrorBanner('Terjadi gangguan saat memfilter; data jadwal tetap dimuat.');
+      }
+    }
+
+    function updateKPIs() {
+      const data = state.filteredData;
+      const baseTotal = Math.max(1, SCHEDULE_DATA.length);
+      const totalCenters = data.length;
+      const totalGroups = data.reduce((s, d) => s + d.groups, 0);
+      const totalMembers = data.reduce((s, d) => s + d.members, 0);
+      const totalClients = data.reduce((s, d) => s + d.clients, 0);
+      const uniqueOfficers = new Set(data.map(d => d.officer)).size;
+
+      let hijauCount = 0;
+      let merahCount = 0;
+      data.forEach((d) => {
+        const c = state.conditions[getRowKey(d)];
+        if (c === 'HIJAU') hijauCount++;
+        else if (c === 'MERAH') merahCount++;
+      });
+      const unsetCount = totalCenters - hijauCount - merahCount;
+
+      document.getElementById('kpiCenters').textContent = fmtNum(totalCenters);
+      const pct = ((totalCenters / baseTotal) * 100).toFixed(1).replace('.0', '');
+      document.getElementById('kpiCentersSub').textContent = `${pct}% dari ${fmtNum(SCHEDULE_DATA.length)} jadwal`;
+
+      document.getElementById('kpiGroups').textContent = fmtNum(totalGroups);
+      const avgGrp = totalCenters > 0 ? (totalGroups / totalCenters).toFixed(2) : '0';
+      document.getElementById('kpiGroupsSub').textContent = `Rata-rata ${avgGrp} grp/ctr`;
+
+      document.getElementById('kpiMembers').textContent = fmtNum(totalMembers);
+      document.getElementById('kpiClients').textContent = fmtNum(totalClients);
+      const ratio = totalMembers > 0 ? ((totalClients / totalMembers) * 100).toFixed(1) : '0';
+      document.getElementById('kpiClientsSub').textContent = `${ratio}% rasio aktif`;
+
+      document.getElementById('kpiOfficers').textContent = fmtNum(uniqueOfficers);
+      document.getElementById('kpiConditionSummary').textContent = `${hijauCount} Hijau • ${merahCount} Merah`;
+      document.getElementById('kpiConditionUnset').textContent = `${unsetCount} belum diatur`;
+
+      document.getElementById('exportCountBadge').textContent = fmtNum(totalCenters);
+      document.getElementById('filterStatusText').innerHTML =
+        `Menampilkan <strong class="text-slate-900">${fmtNum(totalCenters)}</strong> dari <strong class="text-slate-900">${fmtNum(SCHEDULE_DATA.length)}</strong> jadwal center meeting.`;
+    }
+
+    function renderConditionControlHtml(item) {
+      const key = getRowKey(item);
+      const cond = state.conditions[key] || '';
+      const selStyle = getConditionSelectClass(cond);
+
+      return `
+        <select
+          data-condition-select="${escapeHtml(key)}"
+          onchange="handleConditionChange(${item.index}, this.value)"
+          aria-label="Kondisi Center ${escapeHtml(item.centerName)}"
+          class="condition-select px-2.5 py-1.5 rounded-lg border text-xs transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${selStyle}"
+        >
+          <option value="" ${cond === '' ? 'selected' : ''}>&mdash;</option>
+          <option value="HIJAU" ${cond === 'HIJAU' ? 'selected' : ''}>Hijau</option>
+          <option value="MERAH" ${cond === 'MERAH' ? 'selected' : ''}>Merah</option>
+        </select>
+      `;
+    }
+
+    function renderScheduleContent() {
+      const container = document.getElementById('scheduleContentContainer');
+      const data = state.filteredData;
+
+      if (!Array.isArray(data) || data.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl p-12 border border-slate-200 text-center space-y-3">
+            <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+              <i data-lucide="search-x" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800">Tidak ada jadwal yang sesuai filter</h3>
+            <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">Coba ubah filter Kondisi Center, kata kunci pencarian, atau reset filter.</p>
+            <button type="button" onclick="resetAllFilters()" class="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors cursor-pointer">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Reset Filter</span>
+            </button>
+          </div>
+        `;
+        refreshIconsSafe();
+        return;
+      }
+
+      if (state.viewMode === 'flat') {
+        renderFlatTableView(container, data);
+      } else {
+        renderGroupedByOfficerView(container, data);
+      }
+      refreshIconsSafe();
+    }
+
+    function renderFlatTableView(container, data) {
+      const isFull = state.columnMode === 'full';
+      const totalGroups = data.reduce((s, d) => s + d.groups, 0);
+      const totalMembers = data.reduce((s, d) => s + d.members, 0);
+      const totalClients = data.reduce((s, d) => s + d.clients, 0);
+
+      const rowsHtml = data.map((item, idx) => {
+        const key = getRowKey(item);
+        const cond = state.conditions[key] || '';
+        const centerStyle = getCenterCellStyle(cond);
+        const noteVal = state.notes[key] || '';
+        const dayBadge = getDayBadgeClass(item.hari);
+
+        return `
+          <tr onclick="openDetailModal(${item.index})" class="hover:bg-slate-50/90 transition-colors cursor-pointer group">
+            <td class="py-3 px-3 text-slate-400 font-mono text-xs">${idx + 1}</td>
+            <td class="py-3 px-3 whitespace-nowrap">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-[11px] font-bold border ${dayBadge}">
+                ${escapeHtml(item.hari)}
+              </span>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap font-mono text-xs font-bold text-slate-700">
+              ${escapeHtml(item.jam)}
+            </td>
+            <td data-center-cell="${escapeHtml(key)}" class="py-3 px-3 font-medium transition-colors ${centerStyle.cellClass}">
+              <div class="flex items-center gap-2">
+                <span data-center-id-badge="${escapeHtml(key)}" class="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-xs font-semibold border transition-colors ${centerStyle.idBadgeClass}">
+                  ${escapeHtml(item.centerId)}
+                </span>
+                <span class="font-semibold">${escapeHtml(item.centerName)}</span>
+              </div>
+              <div class="text-[11px] opacity-80 sm:hidden mt-0.5">${escapeHtml(item.officer)} &bull; ${escapeHtml(item.desa)}</div>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap text-slate-700 font-medium">${escapeHtml(item.officer)}</td>
+            ${isFull ? `
+              <td class="py-3 px-3 text-slate-700">
+                <div class="font-medium text-slate-800">${escapeHtml(item.desa)}</div>
+                <div class="text-[11px] text-slate-500">Kec. ${escapeHtml(item.kecamatan)}</div>
+              </td>
+              <td class="py-3 px-3 text-slate-600 whitespace-nowrap">${escapeHtml(item.kabupaten)}</td>
+            ` : `
+              <td class="py-3 px-3 text-slate-700 whitespace-nowrap">${escapeHtml(item.desa)}</td>
+            `}
+            <td class="py-3 px-2.5 text-right font-semibold text-slate-700">${item.groups}</td>
+            <td class="py-3 px-2.5 text-right font-semibold text-slate-800">${item.members}</td>
+            <td class="py-3 px-3 text-right font-bold text-emerald-700">${item.clients}</td>
+            <td class="py-2.5 px-3 whitespace-nowrap" onclick="event.stopPropagation()">
+              ${renderConditionControlHtml(item)}
+            </td>
+            ${isFull ? `
+              <td class="py-2.5 px-3 min-w-[160px]" onclick="event.stopPropagation()">
+                <input
+                  type="text"
+                  data-note-input="${escapeHtml(key)}"
+                  value="${escapeHtml(noteVal)}"
+                  oninput="handleNoteChange(${item.index}, this.value)"
+                  placeholder="Catatan..."
+                  class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                />
+              </td>
+            ` : ''}
+            <td class="py-3 px-2 text-center no-print">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 group-hover:bg-slate-200 text-slate-600 transition-colors">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print-shadow-none">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[920px]">
+              <thead>
+                <tr class="bg-slate-800 text-white text-[11px] uppercase tracking-wider">
+                  <th class="py-3.5 px-3 font-semibold w-10">No</th>
+                  <th class="py-3.5 px-3 font-semibold">Hari</th>
+                  <th class="py-3.5 px-3 font-semibold">Jam</th>
+                  <th class="py-3.5 px-3 font-semibold">Center</th>
+                  <th class="py-3.5 px-3 font-semibold">Officer</th>
+                  ${isFull ? `
+                    <th class="py-3.5 px-3 font-semibold">Desa / Kecamatan</th>
+                    <th class="py-3.5 px-3 font-semibold">Kabupaten</th>
+                  ` : `
+                    <th class="py-3.5 px-3 font-semibold">Desa</th>
+                  `}
+                  <th class="py-3.5 px-2.5 text-right font-semibold">Group</th>
+                  <th class="py-3.5 px-2.5 text-right font-semibold">Member</th>
+                  <th class="py-3.5 px-3 text-right font-semibold">Client</th>
+                  <th class="py-3.5 px-3 font-semibold">Kondisi Center</th>
+                  ${isFull ? `<th class="py-3.5 px-3 font-semibold">Keterangan</th>` : ''}
+                  <th class="py-3.5 px-2 text-center font-semibold no-print">Detail</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 bg-white">
+                ${rowsHtml}
+              </tbody>
+              <tfoot>
+                <tr class="bg-emerald-50 border-t-2 border-emerald-600 font-bold text-slate-900 text-xs sm:text-sm">
+                  <td colspan="${isFull ? 7 : 6}" class="py-3.5 px-3">TOTAL (${fmtNum(data.length)} Center)</td>
+                  <td class="py-3.5 px-2.5 text-right text-teal-800">${fmtNum(totalGroups)}</td>
+                  <td class="py-3.5 px-2.5 text-right text-cyan-800">${fmtNum(totalMembers)}</td>
+                  <td class="py-3.5 px-3 text-right text-emerald-800">${fmtNum(totalClients)}</td>
+                  <td colspan="${isFull ? 3 : 2}" class="py-3.5 px-3 no-print"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGroupedByOfficerView(container, data) {
+      const isFull = state.columnMode === 'full';
+      const groupsMap = new Map();
+      data.forEach((item) => {
+        const key = `${item.hari}__${item.officer}`;
+        if (!groupsMap.has(key)) {
+          groupsMap.set(key, { hari: item.hari, officer: item.officer, items: [] });
+        }
+        groupsMap.get(key).items.push(item);
+      });
+
+      let html = `<div class="space-y-4">`;
+      groupsMap.forEach((grp) => {
+        const sumGroups = grp.items.reduce((s, x) => s + x.groups, 0);
+        const sumMembers = grp.items.reduce((s, x) => s + x.members, 0);
+        const sumClients = grp.items.reduce((s, x) => s + x.clients, 0);
+        const dayBadge = getDayBadgeClass(grp.hari);
+
+        const rows = grp.items.map((item, i) => {
+          const key = getRowKey(item);
+          const cond = state.conditions[key] || '';
+          const centerStyle = getCenterCellStyle(cond);
+          const noteVal = state.notes[key] || '';
+
+          return `
+            <tr onclick="openDetailModal(${item.index})" class="hover:bg-slate-50/90 transition-colors cursor-pointer">
+              <td class="py-2.5 px-3 text-slate-400 font-mono text-xs w-10">${i + 1}</td>
+              <td class="py-2.5 px-3 font-mono text-xs font-bold text-slate-700 whitespace-nowrap">${escapeHtml(item.jam)}</td>
+              <td data-center-cell="${escapeHtml(key)}" class="py-2.5 px-3 font-medium transition-colors ${centerStyle.cellClass}">
+                <div class="flex items-center gap-2">
+                  <span data-center-id-badge="${escapeHtml(key)}" class="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-xs font-semibold border transition-colors ${centerStyle.idBadgeClass}">
+                    ${escapeHtml(item.centerId)}
+                  </span>
+                  <span class="font-semibold">${escapeHtml(item.centerName)}</span>
+                </div>
+              </td>
+              <td class="py-2.5 px-3 text-slate-700">${escapeHtml(item.desa)}</td>
+              ${isFull ? `
+                <td class="py-2.5 px-3 text-slate-600 whitespace-nowrap">${escapeHtml(item.kecamatan)}</td>
+                <td class="py-2.5 px-3 text-slate-500 whitespace-nowrap">${escapeHtml(item.kabupaten)}</td>
+              ` : ''}
+              <td class="py-2.5 px-2.5 text-right font-medium">${item.groups}</td>
+              <td class="py-2.5 px-2.5 text-right font-medium">${item.members}</td>
+              <td class="py-2.5 px-3 text-right font-bold text-emerald-700">${item.clients}</td>
+              <td class="py-2 px-3 whitespace-nowrap" onclick="event.stopPropagation()">
+                ${renderConditionControlHtml(item)}
+              </td>
+              ${isFull ? `
+                <td class="py-2 px-3 min-w-[150px]" onclick="event.stopPropagation()">
+                  <input
+                    type="text"
+                    data-note-input="${escapeHtml(key)}"
+                    value="${escapeHtml(noteVal)}"
+                    oninput="handleNoteChange(${item.index}, this.value)"
+                    placeholder="Catatan..."
+                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  />
+                </td>
+              ` : ''}
+            </tr>
+          `;
+        }).join('');
+
+        html += `
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print-shadow-none">
+            <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-bold border ${dayBadge}">${escapeHtml(grp.hari)}</span>
+                <h3 class="text-sm sm:text-base font-bold text-slate-900">${escapeHtml(grp.officer)}</h3>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 font-semibold text-slate-700">${grp.items.length} Center</span>
+                <span class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 font-semibold text-teal-700">${sumGroups} Group</span>
+                <span class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 font-semibold text-cyan-700">${sumMembers} Member</span>
+                <span class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold">${sumClients} Client</span>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[820px]">
+                <thead>
+                  <tr class="bg-slate-100/80 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200">
+                    <th class="py-2 px-3">No</th>
+                    <th class="py-2 px-3">Jam</th>
+                    <th class="py-2 px-3">Center</th>
+                    <th class="py-2 px-3">Desa</th>
+                    ${isFull ? `
+                      <th class="py-2 px-3">Kecamatan</th>
+                      <th class="py-2 px-3">Kabupaten</th>
+                    ` : ''}
+                    <th class="py-2 px-2.5 text-right">Group</th>
+                    <th class="py-2 px-2.5 text-right">Member</th>
+                    <th class="py-2 px-3 text-right">Client</th>
+                    <th class="py-2 px-3">Kondisi Center</th>
+                    ${isFull ? `<th class="py-2 px-3">Keterangan</th>` : ''}
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${rows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    // =========================================================================
+    // 10. TAB REKAP OFFICER & RINGKASAN WILAYAH
+    // =========================================================================
+    function renderOfficerSummary() {
+      const officers = [...new Set(SCHEDULE_DATA.map(d => d.officer))].sort((a, b) => a.localeCompare(b));
+      document.getElementById('officerCountBadge').innerHTML =
+        `<i data-lucide="users" class="w-4 h-4 text-emerald-600"></i><span>${officers.length} Petugas Lapangan</span>`;
+
+      const tbody = document.getElementById('officerSummaryTableBody');
+      const tfoot = document.getElementById('officerSummaryTableFoot');
+      const cardsGrid = document.getElementById('officerCardsGrid');
+
+      let tSen = 0, tSel = 0, tRab = 0, tKam = 0, tJum = 0;
+      let gCtr = 0, gGrp = 0, gMbr = 0, gCli = 0, gHijau = 0, gMerah = 0;
+
+      let rowsHtml = '';
+      let cardsHtml = '';
+
+      officers.forEach((off, idx) => {
+        const items = SCHEDULE_DATA.filter(d => d.officer === off);
+        const sen = items.filter(d => d.hari === 'SENIN').length;
+        const sel = items.filter(d => d.hari === 'SELASA').length;
+        const rab = items.filter(d => d.hari === 'RABU').length;
+        const kam = items.filter(d => d.hari === 'KAMIS').length;
+        const jum = items.filter(d => d.hari === 'JUMAT').length;
+
+        const ctr = items.length;
+        const grp = items.reduce((s, d) => s + d.groups, 0);
+        const mbr = items.reduce((s, d) => s + d.members, 0);
+        const cli = items.reduce((s, d) => s + d.clients, 0);
+        const hijau = items.filter(d => state.conditions[getRowKey(d)] === 'HIJAU').length;
+        const merah = items.filter(d => state.conditions[getRowKey(d)] === 'MERAH').length;
+        const kecs = [...new Set(items.map(d => d.kecamatan).filter(Boolean))];
+
+        tSen += sen; tSel += sel; tRab += rab; tKam += kam; tJum += jum;
+        gCtr += ctr; gGrp += grp; gMbr += mbr; gCli += cli; gHijau += hijau; gMerah += merah;
+
+        const safeOff = off.replace(/'/g, "\\'");
+
+        rowsHtml += `
+          <tr class="hover:bg-emerald-50/70 transition-colors">
+            <td class="py-3 px-3 text-slate-400 font-mono text-xs">${idx + 1}</td>
+            <td class="py-3 px-3 font-bold text-slate-900 whitespace-nowrap">${escapeHtml(off)}</td>
+            <td class="py-3 px-2 text-center font-medium">${sen || '-'}</td>
+            <td class="py-3 px-2 text-center font-medium">${sel || '-'}</td>
+            <td class="py-3 px-2 text-center font-medium">${rab || '-'}</td>
+            <td class="py-3 px-2 text-center font-medium">${kam || '-'}</td>
+            <td class="py-3 px-2 text-center font-medium">${jum || '-'}</td>
+            <td class="py-3 px-2.5 text-right font-extrabold text-slate-900">${ctr}</td>
+            <td class="py-3 px-2.5 text-right font-semibold text-teal-700">${grp}</td>
+            <td class="py-3 px-2.5 text-right font-semibold text-cyan-700">${fmtNum(mbr)}</td>
+            <td class="py-3 px-2.5 text-right font-bold text-emerald-700">${fmtNum(cli)}</td>
+            <td class="py-3 px-2.5 text-center whitespace-nowrap text-xs font-semibold">
+              <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">${hijau}H</span>
+              <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 ml-1">${merah}M</span>
+            </td>
+            <td class="py-3 px-3 text-center no-print">
+              <button type="button" onclick="filterByOfficerAndSwitch('${safeOff}')" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors cursor-pointer">
+                Jadwal
+              </button>
+            </td>
+          </tr>
+        `;
+
+        cardsHtml += `
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h3 class="font-bold text-slate-900 text-sm">${escapeHtml(off)}</h3>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Kec. ${escapeHtml(kecs.join(', ') || '-')}</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-extrabold">${ctr} Ctr</span>
+              </div>
+              <div class="mt-3 flex items-center gap-2 text-xs">
+                <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-semibold">Hijau: ${hijau}</span>
+                <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-900 font-semibold">Merah: ${merah}</span>
+              </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+              <span><strong class="text-slate-900">${grp}</strong> Grp &bull; <strong class="text-slate-900">${fmtNum(mbr)}</strong> Mbr &bull; <strong class="text-emerald-700">${fmtNum(cli)}</strong> Cli</span>
+              <button type="button" onclick="filterByOfficerAndSwitch('${safeOff}')" class="text-emerald-700 font-bold hover:underline cursor-pointer">Buka</button>
+            </div>
+          </div>
+        `;
+      });
+
+      tbody.innerHTML = rowsHtml;
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="2" class="py-3.5 px-3">TOTAL CABANG WADO</td>
+          <td class="py-3.5 px-2 text-center">${tSen}</td>
+          <td class="py-3.5 px-2 text-center">${tSel}</td>
+          <td class="py-3.5 px-2 text-center">${tRab}</td>
+          <td class="py-3.5 px-2 text-center">${tKam}</td>
+          <td class="py-3.5 px-2 text-center">${tJum}</td>
+          <td class="py-3.5 px-2.5 text-right">${fmtNum(gCtr)}</td>
+          <td class="py-3.5 px-2.5 text-right text-teal-800">${fmtNum(gGrp)}</td>
+          <td class="py-3.5 px-2.5 text-right text-cyan-800">${fmtNum(gMbr)}</td>
+          <td class="py-3.5 px-2.5 text-right text-emerald-800">${fmtNum(gCli)}</td>
+          <td class="py-3.5 px-2.5 text-center text-xs">${gHijau}H / ${gMerah}M</td>
+          <td class="py-3.5 px-3 no-print"></td>
+        </tr>
+      `;
+      cardsGrid.innerHTML = cardsHtml;
+    }
+
+    function renderWilayahSummary() {
+      try {
+        const kecList = [...new Set(SCHEDULE_DATA.map(d => d.kecamatan).filter(Boolean))];
+        document.getElementById('wilayahKecCountBadge').textContent = `${kecList.length} Kecamatan`;
+
+        const kabCounts = new Map();
+        SCHEDULE_DATA.forEach((d) => {
+          const k = d.kabupaten || 'Lainnya';
+          kabCounts.set(k, (kabCounts.get(k) || 0) + 1);
+        });
+        document.getElementById('kabupatenSummaryText').innerHTML = [...kabCounts.entries()]
+          .map(([kab, cnt]) => `${escapeHtml(kab)}: <strong class="text-slate-900">${fmtNum(cnt)} Center</strong>`)
+          .join(' &bull; ');
+
+        const stats = kecList.map((kec) => {
+          const items = SCHEDULE_DATA.filter(d => d.kecamatan === kec);
+          return {
+            kecamatan: kec,
+            kabupaten: items[0]?.kabupaten || '',
+            desas: new Set(items.map(d => d.desa).filter(Boolean)).size,
+            centers: items.length,
+            groups: items.reduce((s, d) => s + d.groups, 0),
+            members: items.reduce((s, d) => s + d.members, 0),
+            clients: items.reduce((s, d) => s + d.clients, 0)
+          };
+        }).sort((a, b) => b.centers - a.centers);
+
+        document.getElementById('wilayahTableBody').innerHTML = stats.map((w) => `
+          <tr onclick="filterByKecamatanAndSwitch('${escapeHtml(w.kecamatan).replace(/'/g, "\\'")}')" class="hover:bg-emerald-50/70 transition-colors cursor-pointer">
+            <td class="py-3 px-3.5 font-bold text-slate-900 hover:text-emerald-700">${escapeHtml(w.kecamatan)}</td>
+            <td class="py-3 px-3.5 text-slate-600">${escapeHtml(w.kabupaten)}</td>
+            <td class="py-3 px-3 text-center font-medium">${w.desas}</td>
+            <td class="py-3 px-3 text-right font-extrabold text-slate-900">${w.centers}</td>
+            <td class="py-3 px-3 text-right font-semibold text-teal-700">${w.groups}</td>
+            <td class="py-3 px-3 text-right font-semibold text-cyan-700">${fmtNum(w.members)}</td>
+            <td class="py-3 px-3.5 text-right font-bold text-emerald-700">${fmtNum(w.clients)}</td>
+          </tr>
+        `).join('');
+
+        if (!window.Chart) return;
+
+        if (wilayahCharts.kecamatan) wilayahCharts.kecamatan.destroy();
+        wilayahCharts.kecamatan = new Chart(document.getElementById('chartWilayahKecamatan').getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: stats.map(s => s.kecamatan),
+            datasets: [{
+              label: 'Jumlah Center',
+              data: stats.map(s => s.centers),
+              backgroundColor: '#059669',
+              borderRadius: 8
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }
+          }
+        });
+
+        const days = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
+        if (wilayahCharts.harian) wilayahCharts.harian.destroy();
+        wilayahCharts.harian = new Chart(document.getElementById('chartWilayahHarian').getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: days,
+            datasets: [
+              {
+                label: 'Center',
+                data: days.map(d => SCHEDULE_DATA.filter(x => x.hari === d).length),
+                backgroundColor: '#059669',
+                borderRadius: 8
+              },
+              {
+                label: 'Client',
+                data: days.map(d => SCHEDULE_DATA.filter(x => x.hari === d).reduce((s, x) => s + x.clients, 0)),
+                backgroundColor: '#0d9488',
+                borderRadius: 8
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      } catch (_) {
+        showRuntimeErrorBanner('Grafik wilayah tidak dapat ditampilkan; tabel wilayah tetap aktif.');
+      }
+    }
+
+    function filterByOfficerAndSwitch(officerName) {
+      document.getElementById('officerFilter').value = officerName;
+      state.day = 'ALL';
+      setDayFilter('ALL');
+      switchMainTab('mingguan');
+      showToast(`Filter Officer: ${officerName}`);
+    }
+
+    function filterByKecamatanAndSwitch(kecName) {
+      document.getElementById('kecamatanFilter').value = kecName;
+      state.day = 'ALL';
+      setDayFilter('ALL');
+      switchMainTab('mingguan');
+      showToast(`Filter Kecamatan: ${kecName}`);
+    }
+
+    function switchMainTab(tabName) {
+      state.activeTab = tabName;
+      ['mingguan', 'officer', 'wilayah'].forEach((t) => {
+        const viewEl = document.getElementById(`view-${t}`);
+        const btnEl = document.getElementById(`tabBtn-${t}`);
+        if (t === tabName) {
+          viewEl.classList.remove('hidden');
+          btnEl.className = 'flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-emerald-700 text-white shadow-sm cursor-pointer';
+        } else {
+          viewEl.classList.add('hidden');
+          btnEl.className = 'flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:bg-slate-100 cursor-pointer';
+        }
+      });
+
+      if (tabName === 'wilayah') renderWilayahSummary();
+      refreshIconsSafe();
+    }
+
+    // =========================================================================
+    // 11. MODAL DETAIL CENTER & EKSPOR CSV
+    // =========================================================================
+    function openDetailModal(itemIndex) {
+      const item = SCHEDULE_DATA[itemIndex];
+      if (!item) return;
+
+      const key = getRowKey(item);
+      const cond = state.conditions[key] || '';
+      const styleInfo = getCenterCellStyle(cond);
+
+      document.getElementById('modalCenterIdBadge').textContent = `#${item.centerId}`;
+      document.getElementById('modalCenterName').textContent = item.centerName;
+      document.getElementById('modalDayTime').textContent = `${item.hari} • Pukul ${item.jam} WIB`;
+
+      const box = document.getElementById('modalCenterHighlightBox');
+      box.dataset.activeKey = key;
+      box.className = `p-3.5 rounded-xl border transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${styleInfo.boxClass}`;
+      document.getElementById('modalCenterSummaryText').textContent = `#${item.centerId} — ${item.centerName}`;
+
+      const condSelect = document.getElementById('modalConditionSelect');
+      condSelect.value = cond;
+      condSelect.onchange = (e) => handleConditionChange(item.index, e.target.value);
+
+      document.getElementById('modalOfficerName').textContent = item.officer;
+      document.getElementById('modalLocation').textContent = `Desa ${item.desa}, Kec. ${item.kecamatan}`;
+      document.getElementById('modalKabupaten').textContent = item.kabupaten;
+      document.getElementById('modalGroups').textContent = item.groups;
+      document.getElementById('modalMembers').textContent = item.members;
+      document.getElementById('modalClients').textContent = item.clients;
+
+      const noteInput = document.getElementById('modalNoteInput');
+      noteInput.value = state.notes[key] || '';
+      noteInput.oninput = (e) => handleNoteChange(item.index, e.target.value);
+
+      const siblings = SCHEDULE_DATA.filter(d => d.hari === item.hari && d.officer === item.officer);
+      document.getElementById('modalSiblingTitle').textContent = `Rute ${item.officer} (${item.hari})`;
+      document.getElementById('modalSiblingCount').textContent = `${siblings.length} Center`;
+      document.getElementById('modalSiblingList').innerHTML = siblings.map((s) => {
+        const sCond = state.conditions[getRowKey(s)] || '';
+        const sStyle = getCenterCellStyle(sCond);
+        return `
+          <div onclick="openDetailModal(${s.index})" class="px-3.5 py-2.5 flex items-center justify-between gap-2 cursor-pointer transition-colors ${sStyle.cellClass}">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-white/80 border border-slate-200">${escapeHtml(s.jam)}</span>
+              <span class="font-mono text-[11px]">#${escapeHtml(s.centerId)}</span>
+              <span class="truncate font-semibold">${escapeHtml(s.centerName)}</span>
+            </div>
+            <span class="text-[11px] opacity-80 shrink-0">${escapeHtml(s.desa)}</span>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('modalFilterOfficerBtn').onclick = () => {
+        closeDetailModal();
+        filterByOfficerAndSwitch(item.officer);
+      };
+
+      const modal = document.getElementById('detailModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      refreshIconsSafe();
+    }
+
+    function closeDetailModal() {
+      const modal = document.getElementById('detailModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function closeModalOnBackdrop(e, modalId) {
+      if (e.target.id === modalId) {
+        if (modalId === 'detailModal') closeDetailModal();
+        if (modalId === 'resetModal') closeResetOptionsModal();
+        if (modalId === 'cloudSyncModal') closeCloudSyncModal();
+      }
+    }
+
+    function exportToCSV() {
+      try {
+        const data = state.filteredData;
+        if (!data.length) {
+          showToast('Tidak ada data untuk diunduh.');
+          return;
+        }
+
+        const headers = [
+          'No', 'Hari', 'Officer Name', 'Center ID', 'Center Name',
+          'Jam (TIME)', 'Total Group', 'Total Member', 'Jumlah Client',
+          'Desa/Kelurahan', 'Kecamatan', 'Kabupaten', 'Kondisi Center', 'Keterangan'
+        ];
+
+        const rows = [
+          headers.join(','),
+          ...data.map((d, i) => {
+            const key = getRowKey(d);
+            const cond = state.conditions[key];
+            const condLabel = cond === 'HIJAU' ? 'Hijau' : cond === 'MERAH' ? 'Merah' : '';
+            const noteText = state.notes[key] || '';
+            return [
+              i + 1,
+              `"${d.hari.replace(/"/g, '""')}"`,
+              `"${d.officer.replace(/"/g, '""')}"`,
+              `"${d.centerId.replace(/"/g, '""')}"`,
+              `"${d.centerName.replace(/"/g, '""')}"`,
+              `"${d.jam.replace(/"/g, '""')}"`,
+              d.groups,
+              d.members,
+              d.clients,
+              `"${d.desa.replace(/"/g, '""')}"`,
+              `"${d.kecamatan.replace(/"/g, '""')}"`,
+              `"${d.kabupaten.replace(/"/g, '""')}"`,
+              `"${condLabel}"`,
+              `"${noteText.replace(/"/g, '""')}"`
+            ].join(',');
+          })
+        ];
+
+        const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'Jadwal_Center_Meeting_KOMIDA_WADO.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showToast(`Berhasil mengunduh ${data.length} baris jadwal ke CSV.`);
+      } catch (_) {
+        showRuntimeErrorBanner('Gagal mengekspor CSV.');
+      }
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg border border-slate-700 flex items-center gap-2.5 pointer-events-auto transition-all duration-300';
+      toast.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span><span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3400);
+    }
+
+    // =========================================================================
+    // 12. EKSPOS FUNGSI KE GLOBAL WINDOW UNTUK EVENT HANDLER INLINE
+    // =========================================================================
+    Object.assign(window, {
+      triggerCenterMeetingUpload,
+      handleCenterMeetingFileUpload,
+      exportToCSV,
+      openResetOptionsModal,
+      closeResetOptionsModal,
+      clearAnnotationsOnly,
+      restoreDefaultScheduleDataset,
+      switchMainTab,
+      setDayFilter,
+      setScheduleViewMode,
+      setColumnMode,
+      applyFilters,
+      clearSearch,
+      resetAllFilters,
+      handleConditionChange,
+      handleNoteChange,
+      openDetailModal,
+      closeDetailModal,
+      closeModalOnBackdrop,
+      filterByOfficerAndSwitch,
+      filterByKecamatanAndSwitch,
+      dismissErrorBanner,
+      openCloudSyncModal,
+      closeCloudSyncModal,
+      selectWorkspaceMode,
+      applyCustomWorkspaceCode,
+      signInWithGoogleAccount,
+      signInWithEmailAccount,
+      signOutToGuestSession,
+      forcePushLocalToCloud,
+      copyCurrentWorkspaceLinkOrId
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeDetailModal();
+        closeResetOptionsModal();
+        closeCloudSyncModal();
+      }
+    });
+
+    window.addEventListener('error', (e) => {
+      if (e && e.message) {
+        showRuntimeErrorBanner(`Peringatan: ${e.message}. Data jadwal tetap dipertahankan.`);
+      }
+    });
+
+    function bootstrapApp() {
+      try {
+        loadWorkspacePreferences();
+        loadPersistedData();
+        refreshHeaderAndDayPills();
+        initFilterOptions();
+        renderOfficerSummary();
+        applyFilters();
+        refreshIconsSafe();
+        initFirebaseCloudSync();
+      } catch (_) {
+        state.filteredData = [...SCHEDULE_DATA];
+        updateKPIs();
+        renderScheduleContent();
+        showRuntimeErrorBanner('Mode pemulihan aktif: menampilkan data jadwal.');
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', bootstrapApp);
+    } else {
+      bootstrapApp();
+    }
+  </script>
+</body>
+</html>
